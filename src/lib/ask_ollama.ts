@@ -1,34 +1,6 @@
 const MODEL_NAME = "codegemma";
+// const MODEL_NAME = "phi3:14b";
 const DEFAULT_TEMPRATURE = 0.9;
-
-async function* createDeltaReader(resp: Response) {
-  const reader = resp.body?.getReader();
-  if (!reader) {
-    console.log("No response from the server.");
-    return;
-  }
-  console.log("111");
-
-  const decoder = new TextDecoder();
-  let lastDelta = "";
-
-  while (true) {
-    console.log("111");
-    const { done, value } = await reader.read();
-    if (done) {
-      break;
-    }
-    const textDelta = decoder.decode(value);
-    console.log("111");
-    try {
-      const delta = JSON.parse(lastDelta + textDelta).response;
-      lastDelta = "";
-      yield delta;
-    } catch (e) {
-      lastDelta = textDelta;
-    }
-  }
-}
 
 export async function* queryOllama(
   prompt: string = "Hi",
@@ -49,7 +21,7 @@ export async function* queryOllama(
       temprature,
     }),
   });
-  console.log(prompt);
+  // console.log(prompt);
 
   const reader = resp.body?.getReader();
   if (!reader) {
@@ -66,8 +38,6 @@ export async function* queryOllama(
       break;
     }
     const textDelta = decoder.decode(value);
-    console.log(textDelta);
-    console.log("111");
     try {
       const delta = JSON.parse(lastDelta + textDelta).response;
       lastDelta = "";

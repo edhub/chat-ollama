@@ -3,6 +3,7 @@
 
   import { afterUpdate, onMount, tick } from "svelte";
   import { queryOllama } from "../lib/ask_ollama";
+  import { grabContentFromUrl } from "$lib/grab_web_page";
 
   let chatLog: any[] = [];
 
@@ -27,23 +28,38 @@
   let respMessage = "";
 
   async function sendMessage() {
-    if (message.trim() !== "") {
-      const id = Math.random().toString(36).substr(2, 9);
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const genId = () => Math.random().toString(36).substr(2, 9);
 
-      chatLog.push({ id, name: "User", message });
+    if (message.trim() !== "") {
+      chatLog.push({ id: genId(), name: "User", message });
       chatLog = chatLog;
+      respMessage = "_";
+
+      const url = message.match(urlRegex);
+
+      if (url) {
+        for (let i = 0; i < url.length; i++) {
+          const content =
+            (await grabContentFromUrl(url[i])) || "(无法打开这个网页)";
+          message = message.replace(url[i], `${url[i]} ${content}`);
+        }
+      }
 
       const deltaReader = queryOllama(message);
 
       message = "";
 
       for await (const delta of deltaReader) {
-        console.log(delta);
-        respMessage += delta;
+        if (respMessage === "_") {
+          respMessage = delta;
+        } else {
+          respMessage += delta;
+        }
       }
 
       chatLog.push({
-        id: Math.random().toString(36).substr(2, 9),
+        id: genId(),
         name: "Ollama",
         message: respMessage,
       });
@@ -88,7 +104,11 @@
       <div class="p-4 border-b border-gray-200">
         <p class="font-bold text-blue-500">Ollama</p>
         <div class="prose mt-2">
-          <Markdown source={respMessage} />
+          {#if respMessage === "_"}
+            <p class="blink">_</p>
+          {:else}
+            <Markdown source={respMessage} />
+          {/if}
         </div>
       </div>
     {/if}
@@ -121,3 +141,21 @@
     >
   </form>
 </div>
+
+<style>
+  @keyframes blink {
+    0% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+
+  .blink {
+    animation: blink 1s infinite;
+  }
+</style>
