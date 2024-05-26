@@ -12,11 +12,11 @@
 
   function calculatePosition() {
     const windowWidth = window.innerWidth;
-    let toastX = Math.max(30, x + 16);
-    let toastY = Math.max(30, y + 20);
+    let toastX = Math.max(30, x + 20);
+    let toastY = Math.max(30, y);
 
     alignRight = windowWidth - x < 300;
-    toastX = alignRight ? windowWidth - x + 16 : toastX;
+    toastX = alignRight ? windowWidth - x + 20 : toastX;
 
     positionStyle = `${alignRight ? "right" : "left"}: ${toastX}px; top: ${toastY}px`;
   }

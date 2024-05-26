@@ -11,7 +11,7 @@
 
   let selectedModel = "";
 
-  const DEFAULT_SERVER_URL = "http://127.0.0.1:11434/api/generate";
+  const DEFAULT_SERVER_URL = "http://localhost:11434/api/generate";
   let serverUrl = DEFAULT_SERVER_URL;
 
   onMount(() => {

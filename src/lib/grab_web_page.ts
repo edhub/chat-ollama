@@ -1,14 +1,14 @@
-import { fetch, ResponseType } from "@tauri-apps/api/http";
+import { fetch } from "@tauri-apps/plugin-http";
 
 async function fetchWebContent(url: string): Promise<string> {
   const response = await fetch(url, {
     method: "GET",
-    responseType: ResponseType.Text,
   });
   if (!response.ok) {
     throw new Error(`HTTP error! status: ${response.status}`);
   }
-  return response.data as string;
+  const text = await response.text();
+  return text;
 }
 
 function parseHTML(html: string): Document {
