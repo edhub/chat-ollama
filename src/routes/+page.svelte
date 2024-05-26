@@ -1,16 +1,35 @@
 <script lang="ts">
-  import Markdown from "svelte-markdown";
-
-  import { afterUpdate, onMount, tick } from "svelte";
+  import { afterUpdate, onDestroy, onMount, tick } from "svelte";
   import { queryOllama } from "../lib/ask_ollama";
   import { grabContentFromUrl } from "$lib/grab_web_page";
+  import Message from "./Message.svelte";
+  import Menu from "./Menu.svelte";
+  import Toast from "./Toast.svelte";
 
+  let showMenu = false;
   let chatLog: any[] = [];
 
+  let selectedModel = "";
+
+  const DEFAULT_SERVER_URL = "http://127.0.0.1:11434/api/generate";
+  let serverUrl = DEFAULT_SERVER_URL;
+
   onMount(() => {
+    selectedModel = localStorage.getItem("selectedModel") || "codegemma";
+    serverUrl = localStorage.getItem("serverUrl") || DEFAULT_SERVER_URL;
+
     let localChatLog = localStorage.getItem("chatLog");
     chatLog = localChatLog ? JSON.parse(localChatLog) : [];
     resizeTextarea();
+
+    setTimeout(() => {
+      scrollToBottom();
+    }, 500);
+    window.addEventListener("mousemove", trackMouse);
+  });
+
+  onDestroy(() => {
+    window.removeEventListener("mousemove", trackMouse);
   });
 
   let message = "";
@@ -32,7 +51,7 @@
     const genId = () => Math.random().toString(36).substr(2, 9);
 
     if (message.trim() !== "") {
-      chatLog.push({ id: genId(), name: "User", message });
+      chatLog.push({ id: genId(), name: "User", model: "", message });
       chatLog = chatLog;
       respMessage = "_";
 
@@ -42,11 +61,12 @@
         for (let i = 0; i < url.length; i++) {
           const content =
             (await grabContentFromUrl(url[i])) || "(无法打开这个网页)";
+          console.log(content);
           message = message.replace(url[i], `${url[i]} ${content}`);
         }
       }
 
-      const deltaReader = queryOllama(message);
+      const deltaReader = queryOllama(message, selectedModel, serverUrl);
 
       message = "";
 
@@ -61,6 +81,7 @@
       chatLog.push({
         id: genId(),
         name: "Ollama",
+        model: selectedModel,
         message: respMessage,
       });
       chatLog = chatLog;
@@ -73,44 +94,61 @@
     }
   }
 
-  afterUpdate(async () => {
-    await tick();
-    chatContainer.scrollIntoView({ behavior: "smooth", block: "end" });
+  afterUpdate(() => {
+    if (respMessage.length > 0) {
+      scrollToBottom();
+    }
   });
 
-  function clearChatHistory() {
-    chatLog = [];
-    respMessage = "";
+  async function scrollToBottom() {
+    await tick();
+    chatContainer.scrollIntoView({ behavior: "smooth", block: "end" });
+  }
+
+  let x = 0;
+  let y = 0;
+  let toastMessage = "";
+
+  function trackMouse(event: MouseEvent) {
+    x = event.clientX;
+    y = event.clientY;
+  }
+
+  $: {
+    if (selectedModel !== "") {
+      localStorage.setItem("selectedModel", selectedModel);
+      showToastMessage("Selected model: " + selectedModel);
+    }
+  }
+  $: {
+    localStorage.setItem("serverUrl", serverUrl);
+  }
+
+  function resendMessage(event: any) {
+    message = event.detail.message;
+    sendMessage();
+  }
+
+  function showToastMessage(message: string) {
+    toastMessage = message;
   }
 </script>
 
-<div class="">
-  <button
-    class="fixed top-0 right-0 m-2 p-1 rounded bg-red-400 text-white"
-    on:click={clearChatHistory}
-  >
-    Clear
-  </button>
+<div class="z-0 w-full h-full">
   <div bind:this={chatContainer} class=" flex flex-col overflow-y-auto pb-20">
-    {#each chatLog as { id, name, message } (id)}
-      <div class="p-4 border-b border-gray-200">
-        <p class="font-bold text-blue-500">{name}</p>
-        <div class="prose mt-2">
-          <Markdown source={message} />
-        </div>
-      </div>
+    {#each chatLog as { id, name, model, message } (id)}
+      <Message
+        {name}
+        {model}
+        {message}
+        on:copiedMessage={() => {
+          showToastMessage("Message copied!");
+        }}
+        on:resendMessage={resendMessage}
+      />
     {/each}
     {#if respMessage.length > 0}
-      <div class="p-4 border-b border-gray-200">
-        <p class="font-bold text-blue-500">Ollama</p>
-        <div class="prose mt-2">
-          {#if respMessage === "_"}
-            <p class="blink">_</p>
-          {:else}
-            <Markdown source={respMessage} />
-          {/if}
-        </div>
-      </div>
+      <Message name="Ollama" model={selectedModel} message={respMessage} />
     {/if}
   </div>
 
@@ -142,20 +180,18 @@
   </form>
 </div>
 
-<style>
-  @keyframes blink {
-    0% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0;
-    }
-    100% {
-      opacity: 1;
-    }
-  }
+<button
+  class="fixed top-0 right-0 m-2 p-1 rounded bg-blue-500 text-white"
+  on:click={() => (showMenu = true)}>Menu</button
+>
 
-  .blink {
-    animation: blink 1s infinite;
-  }
-</style>
+<Toast {x} {y} bind:message={toastMessage} />
+
+<Menu
+  bind:showMenu
+  bind:selectedModel
+  on:clearChat={() => {
+    chatLog = [];
+    localStorage.removeItem("chatLog");
+  }}
+/>

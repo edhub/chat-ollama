@@ -1,27 +1,24 @@
 const MODEL_NAME = "codegemma";
-// const MODEL_NAME = "phi3:14b";
 const DEFAULT_TEMPRATURE = 0.9;
 
 export async function* queryOllama(
   prompt: string = "Hi",
   model: string = MODEL_NAME,
+  server: string = "http://localhost:11434/api/generate",
   temprature: number = DEFAULT_TEMPRATURE
 ) {
-  const OLLAMA_URL = "http://localhost:11434/api/generate";
-
-  //   const OLLAMA_URL = "http://10.1.22.88:11434/api/generate";
-  const resp = await fetch(OLLAMA_URL, {
+  const body = JSON.stringify({
+    model,
+    prompt,
+    temprature,
+  });
+  const resp = await fetch(server, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      model,
-      prompt,
-      temprature,
-    }),
+    body,
   });
-  // console.log(prompt);
 
   const reader = resp.body?.getReader();
   if (!reader) {
