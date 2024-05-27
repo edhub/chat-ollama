@@ -333,6 +333,7 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-http",
  "tauri-plugin-shell",
+ "tauri-plugin-window-state",
 ]
 
 [[package]]
@@ -3378,6 +3379,20 @@ dependencies = [
  "tauri-plugin",
  "thiserror",
  "tokio",
+]
+
+[[package]]
+name = "tauri-plugin-window-state"
+version = "2.0.0-beta.7"
+source = "git+https://github.com/tauri-apps/plugins-workspace?branch=v2#69e4c2e56f1b721775546050b9ebf57376eba9f8"
+dependencies = [
+ "bitflags 2.5.0",
+ "log",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-plugin",
+ "thiserror",
 ]
 
 [[package]]
