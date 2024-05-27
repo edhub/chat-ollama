@@ -1,11 +1,24 @@
 <script>
-  import Markdown from "svelte-markdown";
-  import { fade, slide } from "svelte/transition";
+  import Markdown from "svelte-exmarkdown";
+
+  import { gfmPlugin } from "svelte-exmarkdown/gfm";
+  import rehypeHighlight from "rehype-highlight";
+  import "highlight.js/styles/github-dark-dimmed.min.css";
+
+  const plugins = [
+    gfmPlugin(),
+    {
+      rehypePlugin: [rehypeHighlight],
+    },
+  ];
+
+  import { fade } from "svelte/transition";
   import { createEventDispatcher } from "svelte";
 
   export let name = "";
   export let model = "";
   export let message = "";
+  export let isRespOngoing = false;
 
   const dispatch = createEventDispatcher();
 
@@ -20,6 +33,9 @@
 <div
   class="p-4 border-b border-gray-200"
   on:mouseover={() => {
+    showActionButtons = true;
+  }}
+  on:focus={() => {
     showActionButtons = true;
   }}
   on:mouseleave={() => {
@@ -48,11 +64,11 @@
       </span>
     {/if}
   </p>
-  <div class="prose mt-2 !max-w-none">
-    {#if message === "_"}
+  <div class="prose mt-2 max-w-none">
+    {#if message.length === 0 && isRespOngoing}
       <div class="blink">_</div>
     {:else}
-      <Markdown source={message} />
+      <Markdown md={message} {plugins} />
     {/if}
   </div>
 </div>

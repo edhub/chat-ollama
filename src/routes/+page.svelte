@@ -11,7 +11,7 @@
 
   let selectedModel = "";
 
-  const DEFAULT_SERVER_URL = "http://localhost:11434/api/generate";
+  const DEFAULT_SERVER_URL = "http://10.1.22.88:11434/api/generate";
   let serverUrl = DEFAULT_SERVER_URL;
 
   onMount(() => {
@@ -25,6 +25,7 @@
     setTimeout(() => {
       scrollToBottom();
     }, 500);
+
     window.addEventListener("mousemove", trackMouse);
   });
 
@@ -45,38 +46,42 @@
   }
 
   let respMessage = "";
+  let isRespOngoing = false;
 
   async function sendMessage() {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     const genId = () => Math.random().toString(36).substr(2, 9);
 
     if (message.trim() !== "") {
-      chatLog.push({ id: genId(), name: "User", model: "", message });
-      chatLog = chatLog;
-      respMessage = "_";
+      let tmpMsg = message;
+      message = "";
 
-      const url = message.match(urlRegex);
+      chatLog.push({ id: genId(), name: "User", model: "", message: tmpMsg });
+      chatLog = chatLog;
+      isRespOngoing = true;
+
+      const url = tmpMsg.match(urlRegex);
 
       if (url) {
         for (let i = 0; i < url.length; i++) {
           const content =
             (await grabContentFromUrl(url[i])) || "(无法打开这个网页)";
-          console.log(content);
-          message = message.replace(url[i], `${url[i]} ${content}`);
+          // console.log(content);
+          tmpMsg = tmpMsg.replace(url[i], `${url[i]} ${content}`);
         }
       }
 
-      const deltaReader = queryOllama(message, selectedModel, serverUrl);
-
-      message = "";
+      const deltaReader = queryOllama(tmpMsg, selectedModel, serverUrl);
 
       for await (const delta of deltaReader) {
-        if (respMessage === "_") {
-          respMessage = delta;
-        } else {
-          respMessage += delta;
-        }
+        // if (respMessage === "_") {
+        //   respMessage = delta;
+        // } else {
+        respMessage += delta;
+        // }
       }
+
+      respMessage = respMessage.length > 0 ? respMessage : "好像出错啦";
 
       chatLog.push({
         id: genId(),
@@ -86,6 +91,7 @@
       });
       chatLog = chatLog;
 
+      isRespOngoing = false;
       respMessage = "";
 
       await tick();
@@ -95,7 +101,7 @@
   }
 
   afterUpdate(() => {
-    if (respMessage.length > 0) {
+    if (isRespOngoing) {
       scrollToBottom();
     }
   });
@@ -147,8 +153,13 @@
         on:resendMessage={resendMessage}
       />
     {/each}
-    {#if respMessage.length > 0}
-      <Message name="Ollama" model={selectedModel} message={respMessage} />
+    {#if isRespOngoing}
+      <Message
+        name="Ollama"
+        model={selectedModel}
+        message={respMessage}
+        {isRespOngoing}
+      />
     {/if}
   </div>
 

@@ -4,7 +4,7 @@ const DEFAULT_TEMPRATURE = 0.9;
 export async function* queryOllama(
   prompt: string = "Hi",
   model: string = MODEL_NAME,
-  server: string = "http://localhost:11434/api/generate",
+  server: string = "http://10.1.22.88:11434/api/generate",
   temprature: number = DEFAULT_TEMPRATURE
 ) {
   const body = JSON.stringify({
@@ -22,7 +22,7 @@ export async function* queryOllama(
 
   const reader = resp.body?.getReader();
   if (!reader) {
-    console.log("No response from the server.");
+    yield "No response from the server.";
     return;
   }
 
@@ -34,12 +34,16 @@ export async function* queryOllama(
     if (done) {
       break;
     }
-    const textDelta = decoder.decode(value);
+    const textDelta = decoder.decode(value).trim();
     try {
-      const delta = JSON.parse(lastDelta + textDelta).response;
+      let jsonStrings = textDelta.split(/(?<=false})/g);
+
+      let delta = jsonStrings.map((s) => JSON.parse(s).response).join("");
+
       lastDelta = "";
       yield delta;
     } catch (e) {
+      console.log(textDelta);
       lastDelta = textDelta;
     }
   }
