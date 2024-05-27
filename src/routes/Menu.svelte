@@ -1,11 +1,13 @@
 <script>
   import { createEventDispatcher } from "svelte";
   import { fade, slide } from "svelte/transition";
+  import InplaceEdit from "./InplaceEdit.svelte";
 
   const dispatch = createEventDispatcher();
 
   export let showMenu = false;
   export let selectedModel = "";
+  export let serverUrl = "";
 
   let MODELS = ["codegemma", "llama3", "phi3:14b"];
 </script>
@@ -39,6 +41,11 @@
               >
             </div>
           {/each}
+        </div>
+
+        <p class="text-lg font-bold mt-8 mb-2">Server Url</p>
+        <div on:click|stopPropagation class="rounded bg-gray-200 p-2">
+          <InplaceEdit bind:value={serverUrl} />
         </div>
 
         <button

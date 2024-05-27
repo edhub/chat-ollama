@@ -9,15 +9,12 @@
   let showMenu = false;
   let chatLog: any[] = [];
 
-  let selectedModel = "";
+  let selectedModel = localStorage.getItem("selectedModel") ?? "codegemma";
 
-  const DEFAULT_SERVER_URL = "http://10.1.22.88:11434/api/generate";
-  let serverUrl = DEFAULT_SERVER_URL;
+  let serverUrl =
+    localStorage.getItem("serverUrl") ?? "http://10.1.22.88:11434";
 
   onMount(() => {
-    selectedModel = localStorage.getItem("selectedModel") || "codegemma";
-    serverUrl = localStorage.getItem("serverUrl") || DEFAULT_SERVER_URL;
-
     let localChatLog = localStorage.getItem("chatLog");
     chatLog = localChatLog ? JSON.parse(localChatLog) : [];
     resizeTextarea();
@@ -66,7 +63,6 @@
         for (let i = 0; i < url.length; i++) {
           const content =
             (await grabContentFromUrl(url[i])) || "(无法打开这个网页)";
-          // console.log(content);
           tmpMsg = tmpMsg.replace(url[i], `${url[i]} ${content}`);
         }
       }
@@ -74,11 +70,7 @@
       const deltaReader = queryOllama(tmpMsg, selectedModel, serverUrl);
 
       for await (const delta of deltaReader) {
-        // if (respMessage === "_") {
-        //   respMessage = delta;
-        // } else {
         respMessage += delta;
-        // }
       }
 
       respMessage = respMessage.length > 0 ? respMessage : "好像出错啦";
@@ -126,7 +118,9 @@
       showToastMessage("Selected model: " + selectedModel);
     }
   }
+
   $: {
+    serverUrl = serverUrl.replace(/\/$/, ""); // trim last slash
     localStorage.setItem("serverUrl", serverUrl);
   }
 
@@ -201,6 +195,7 @@
 <Menu
   bind:showMenu
   bind:selectedModel
+  bind:serverUrl
   on:clearChat={() => {
     chatLog = [];
     localStorage.removeItem("chatLog");

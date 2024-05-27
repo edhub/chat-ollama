@@ -4,7 +4,7 @@ const DEFAULT_TEMPRATURE = 0.9;
 export async function* queryOllama(
   prompt: string = "Hi",
   model: string = MODEL_NAME,
-  server: string = "http://10.1.22.88:11434/api/generate",
+  server: string = "http://localhost:11434",
   temprature: number = DEFAULT_TEMPRATURE
 ) {
   const body = JSON.stringify({
@@ -12,7 +12,8 @@ export async function* queryOllama(
     prompt,
     temprature,
   });
-  const resp = await fetch(server, {
+  console.log("server is", server);
+  const resp = await fetch(server + "/api/generate", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

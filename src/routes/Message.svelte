@@ -10,6 +10,7 @@
     {
       rehypePlugin: [rehypeHighlight],
     },
+    { renderer: { a: "strong" } }, // override the default renderer for `a` tag
   ];
 
   import { fade } from "svelte/transition";
