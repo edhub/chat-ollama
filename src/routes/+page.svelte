@@ -1,9 +1,9 @@
 <script lang="ts">
+  import { grabContentFromUrl } from "$lib/grab_web_page";
   import { afterUpdate, onDestroy, onMount, tick } from "svelte";
   import { queryOllama } from "../lib/ask_ollama";
-  import { grabContentFromUrl } from "$lib/grab_web_page";
-  import Message from "./Message.svelte";
   import Menu from "./Menu.svelte";
+  import Message from "./Message.svelte";
   import Toast from "./Toast.svelte";
 
   let showMenu = false;
@@ -22,12 +22,6 @@
     setTimeout(() => {
       scrollToBottom();
     }, 500);
-
-    window.addEventListener("mousemove", trackMouse);
-  });
-
-  onDestroy(() => {
-    window.removeEventListener("mousemove", trackMouse);
   });
 
   let message = "";
@@ -103,23 +97,19 @@
     chatContainer.scrollIntoView({ behavior: "smooth", block: "end" });
   }
 
-  let x = 0;
-  let y = 0;
   let toastMessage = "";
-
-  function trackMouse(event: MouseEvent) {
-    x = event.clientX;
-    y = event.clientY;
-  }
 
   $: {
     if (selectedModel !== "") {
       localStorage.setItem("selectedModel", selectedModel);
-      showToastMessage("Selected model: " + selectedModel);
+      showToastMessage("已选模型: " + selectedModel);
     }
   }
 
   $: {
+    if (serverUrl === "") {
+      serverUrl = "http://localhost:11434";
+    }
     serverUrl = serverUrl.replace(/\/$/, ""); // trim last slash
     localStorage.setItem("serverUrl", serverUrl);
   }
@@ -142,7 +132,7 @@
         {model}
         {message}
         on:copiedMessage={() => {
-          showToastMessage("Message copied!");
+          showToastMessage("已复制");
         }}
         on:resendMessage={resendMessage}
       />
@@ -164,9 +154,9 @@
     <textarea
       bind:this={textarea}
       id="chat-input"
-      placeholder="Type a message..."
+      placeholder="输入消息..."
       bind:value={message}
-      class="m-2 p-2 rounded border flex-grow"
+      class="m-2 p-2 rounded border flex-grow outline-none"
       rows="2"
       maxlength="4000"
       style="resize: none;"
@@ -179,18 +169,23 @@
       on:input={resizeTextarea}
     />
 
-    <button type="submit" class="m-2 p-2 rounded bg-blue-400 text-white"
-      >Send</button
+    <button
+      type="submit"
+      class="m-2 ml-0 p-2 rounded bg-blue-400 hover:bg-blue-500 text-white"
     >
+      <span class="iconify simple-line-icons--paper-plane"></span>
+    </button>
   </form>
 </div>
 
 <button
-  class="fixed top-0 right-0 m-2 p-1 rounded bg-blue-500 text-white"
-  on:click={() => (showMenu = true)}>Menu</button
+  class="fixed top-0 right-0 m-2 p-2 rounded bg-blue-400 hover:bg-blue-500 text-white"
+  on:click={() => (showMenu = true)}
 >
+  <span class="iconify simple-line-icons--menu"> </span>
+</button>
 
-<Toast {x} {y} bind:message={toastMessage} />
+<Toast bind:message={toastMessage} />
 
 <Menu
   bind:showMenu

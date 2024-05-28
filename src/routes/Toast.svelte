@@ -1,14 +1,32 @@
 <script>
+  import { onDestroy, onMount } from "svelte";
   import { fade } from "svelte/transition";
 
   export let message = "";
-  export let x = 0;
-  export let y = 0;
 
   let alignRight = false;
 
   let visible = false;
   let positionStyle = "";
+
+  onMount(() => {
+    window.addEventListener("mousemove", trackMouse);
+  });
+
+  onDestroy(() => {
+    window.removeEventListener("mousemove", trackMouse);
+  });
+
+  let x = 0;
+  let y = 0;
+
+  /**
+   * @param {{ clientX: number; clientY: number; }} event
+   */
+  function trackMouse(event) {
+    x = event.clientX;
+    y = event.clientY;
+  }
 
   function calculatePosition() {
     const windowWidth = window.innerWidth;

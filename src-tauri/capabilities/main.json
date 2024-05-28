@@ -14,7 +14,13 @@
     "window:allow-set-title",
     {
       "identifier": "http:default",
-      "allow": [{ "url": "https://*" }]
-    }
+      "allow": [
+        {
+          "url": "https://*"
+        }
+      ]
+    },
+    "shell:default",
+    "shell:allow-open"
   ]
 }

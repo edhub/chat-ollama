@@ -52,14 +52,14 @@
       <span transition:fade={{ duration: 300 }}>
         <button
           class="ml-4 p-0 text-xs text-blue-400"
-          on:click={copyToClipboard}>Copy</button
+          on:click={copyToClipboard}>复制</button
         >
         {#if name === "User"}
           <button
             class="ml-2 p-0 text-xs text-blue-400"
             on:click={() => {
               dispatch("resendMessage", { message });
-            }}>Resend</button
+            }}>再次发送</button
           >
         {/if}
       </span>

@@ -12,7 +12,6 @@ export async function* queryOllama(
     prompt,
     temprature,
   });
-  console.log("server is", server);
   const resp = await fetch(server + "/api/generate", {
     method: "POST",
     headers: {
@@ -24,6 +23,7 @@ export async function* queryOllama(
   const reader = resp.body?.getReader();
   if (!reader) {
     yield "No response from the server.";
+    console.log("server is", server);
     return;
   }
 
@@ -37,7 +37,8 @@ export async function* queryOllama(
     }
     const textDelta = decoder.decode(value).trim();
     try {
-      let jsonStrings = textDelta.split(/(?<=false})/g);
+      lastDelta += textDelta;
+      let jsonStrings = lastDelta.split("\n");
 
       let delta = jsonStrings.map((s) => JSON.parse(s).response).join("");
 
@@ -45,7 +46,6 @@ export async function* queryOllama(
       yield delta;
     } catch (e) {
       console.log(textDelta);
-      lastDelta = textDelta;
     }
   }
 }
