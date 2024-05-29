@@ -1,13 +1,13 @@
-<script>
+<script lang="ts">
   import { onDestroy, onMount } from "svelte";
   import { fade } from "svelte/transition";
 
-  export let message = "";
+  let { message = "" } = $props();
 
   let alignRight = false;
 
-  let visible = false;
-  let positionStyle = "";
+  let visible = $state(false);
+  let positionStyle = $state("");
 
   onMount(() => {
     window.addEventListener("mousemove", trackMouse);
@@ -20,10 +20,7 @@
   let x = 0;
   let y = 0;
 
-  /**
-   * @param {{ clientX: number; clientY: number; }} event
-   */
-  function trackMouse(event) {
+  function trackMouse(event: MouseEvent) {
     x = event.clientX;
     y = event.clientY;
   }
@@ -39,7 +36,7 @@
     positionStyle = `${alignRight ? "right" : "left"}: ${toastX}px; top: ${toastY}px`;
   }
 
-  $: {
+  $effect(() => {
     if (message.length > 0) {
       calculatePosition();
 
@@ -50,7 +47,7 @@
     } else {
       visible = false;
     }
-  }
+  });
 </script>
 
 {#if visible}

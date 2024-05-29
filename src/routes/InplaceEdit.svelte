@@ -1,11 +1,10 @@
-<script>
-  export let value = "";
+<script lang="ts">
+  let { value = $bindable("") } = $props();
 
-  let editing = false;
-  let tempValue = value;
+  let editing = $state(false);
+  let tempValue = $state(value);
 
-  // @ts-ignore
-  function handleKeydown(event) {
+  function handleKeydown(event: KeyboardEvent) {
     if (event.key === "Enter") {
       value = tempValue;
       editing = false;
@@ -20,17 +19,17 @@
 </script>
 
 {#if editing}
-  <!-- svelte-ignore a11y-autofocus -->
+  <!-- svelte-ignore a11y_autofocus -->
   <input
     type="text"
     bind:value={tempValue}
-    on:keydown={handleKeydown}
-    on:blur={handleBlur}
+    onkeydown={handleKeydown}
+    onblur={handleBlur}
     autofocus
   />
 {:else}
   <p
-    on:click={() => {
+    onclick={(e) => {
       editing = true;
       tempValue = value;
     }}

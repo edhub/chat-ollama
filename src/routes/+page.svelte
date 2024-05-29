@@ -1,18 +1,27 @@
 <script lang="ts">
   import { grabContentFromUrl } from "$lib/grab_web_page";
-  import { afterUpdate, onDestroy, onMount, tick } from "svelte";
+  import { onMount, tick } from "svelte";
   import { queryOllama } from "../lib/ask_ollama";
   import Menu from "./Menu.svelte";
   import Message from "./Message.svelte";
   import Toast from "./Toast.svelte";
 
-  let showMenu = false;
-  let chatLog: any[] = [];
+  interface Message {
+    id: string;
+    name: string;
+    model: string;
+    message: string;
+  }
 
-  let selectedModel = localStorage.getItem("selectedModel") ?? "codegemma";
+  let chatLog = $state<Message[]>([]);
 
-  let serverUrl =
-    localStorage.getItem("serverUrl") ?? "http://10.1.22.88:11434";
+  let showMenu = $state(false);
+  let selectedModel = $state(
+    localStorage.getItem("selectedModel") ?? "codegemma"
+  );
+  let serverUrl = $state(
+    localStorage.getItem("serverUrl") ?? "http://10.1.22.88:11434"
+  );
 
   onMount(() => {
     let localChatLog = localStorage.getItem("chatLog");
@@ -27,7 +36,7 @@
     });
   });
 
-  let message = "";
+  let message = $state("");
 
   let chatContainer: HTMLDivElement;
   let textarea: HTMLTextAreaElement;
@@ -39,8 +48,8 @@
     textarea.style.height = desiredHeight + "px";
   }
 
-  let respMessage = "";
-  let isRespOngoing = false;
+  let respMessage = $state("");
+  let isRespOngoing = $state(false);
 
   async function sendMessage() {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -91,7 +100,7 @@
 
   let scrollTime = 0;
   function shouldAutoScroll() {
-    const threshold = 100; // distance from bottom in pixels
+    const threshold = 200; // distance from bottom in pixels
     const distanceFromBottom =
       document.documentElement.scrollHeight -
       window.scrollY -
@@ -101,8 +110,8 @@
     return isRespOngoing && nearBottom && !isScrolling;
   }
 
-  afterUpdate(() => {
-    if (shouldAutoScroll()) {
+  $effect(() => {
+    if (respMessage && shouldAutoScroll()) {
       scrollToBottom();
     }
   });
@@ -112,25 +121,25 @@
     chatContainer.scrollIntoView({ behavior: "smooth", block: "end" });
   }
 
-  let toastMessage = "";
+  let toastMessage = $state("");
 
-  $: {
+  $effect(() => {
     if (selectedModel !== "") {
       localStorage.setItem("selectedModel", selectedModel);
       showToastMessage("已选模型: " + selectedModel);
     }
-  }
+  });
 
-  $: {
+  $effect(() => {
     if (serverUrl === "") {
       serverUrl = "http://localhost:11434";
     }
     serverUrl = serverUrl.replace(/\/$/, ""); // trim last slash
     localStorage.setItem("serverUrl", serverUrl);
-  }
+  });
 
-  function resendMessage(event: any) {
-    message = event.detail.message;
+  function resendMessage(msg: string) {
+    message = msg;
     sendMessage();
   }
 
@@ -146,10 +155,10 @@
         {name}
         {model}
         {message}
-        on:copiedMessage={() => {
-          showToastMessage("已复制");
+        onMessageCopied={() => {
+          showToastMessage("消息已复制到剪贴板");
         }}
-        on:resendMessage={resendMessage}
+        onResendMessage={resendMessage}
       />
     {/each}
     {#if isRespOngoing}
@@ -164,7 +173,10 @@
 
   <form
     class="chat-input fixed bottom-0 w-full bg-white flex items-end"
-    on:submit|preventDefault={sendMessage}
+    onsubmit={(e) => {
+      e.preventDefault();
+      sendMessage;
+    }}
   >
     <textarea
       bind:this={textarea}
@@ -175,7 +187,7 @@
       rows="2"
       maxlength="4000"
       style="resize: none;"
-      on:keydown={async (e) => {
+      onkeydown={async (e) => {
         if (e.key === "Enter" && !e.altKey && !e.shiftKey) {
           e.preventDefault();
           sendMessage();
@@ -183,8 +195,8 @@
           resizeTextarea();
         }
       }}
-      on:input={resizeTextarea}
-    />
+      oninput={resizeTextarea}
+    ></textarea>
 
     <button
       type="submit"
@@ -197,18 +209,18 @@
 
 <button
   class="fixed top-0 right-0 m-2 p-2 rounded bg-blue-400 hover:bg-blue-500 text-white"
-  on:click={() => (showMenu = true)}
+  onclick={() => (showMenu = true)}
 >
   <span class="iconify simple-line-icons--menu"> </span>
 </button>
 
-<Toast bind:message={toastMessage} />
+<Toast message={toastMessage} />
 
 <Menu
   bind:showMenu
   bind:selectedModel
   bind:serverUrl
-  on:clearChat={() => {
+  clearChat={() => {
     chatLog = [];
     localStorage.removeItem("chatLog");
   }}

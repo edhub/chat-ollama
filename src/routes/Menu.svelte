@@ -1,33 +1,39 @@
-<script>
-  import { createEventDispatcher } from "svelte";
+<script lang="ts">
   import { fade, slide } from "svelte/transition";
   import InplaceEdit from "./InplaceEdit.svelte";
 
   import { open } from "@tauri-apps/plugin-shell";
 
-  const dispatch = createEventDispatcher();
-
-  export let showMenu = false;
-  export let selectedModel = "";
-  export let serverUrl = "";
+  let {
+    showMenu = $bindable(false),
+    selectedModel = $bindable(),
+    serverUrl = $bindable(),
+    clearChat,
+  }: {
+    showMenu: boolean;
+    selectedModel: string;
+    serverUrl: string;
+    clearChat: () => void;
+  } = $props();
 
   let localStorageModels = localStorage.getItem("models");
-  let availableModels = localStorageModels
-    ? JSON.parse(localStorageModels)
-    : ["codegemma"];
+  let availableModels = $state(
+    localStorageModels ? JSON.parse(localStorageModels) : ["codegemma"]
+  );
 
   async function fetchMoedls() {
     const apiListModels = serverUrl + "/api/tags";
     const resp = await (await fetch(apiListModels)).json();
-    console.log(resp);
-    availableModels = resp.models.map((m) => m.model);
+    availableModels = resp.models.map((m: any) => m.model);
     localStorage.setItem("models", JSON.stringify(availableModels));
   }
 </script>
 
 {#if showMenu}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
-    on:click={() => (showMenu = false)}
+    onclick={() => (showMenu = false)}
     transition:fade={{ duration: 250 }}
     class="fixed left-0 top-0 w-full h-full bg-gray-800 bg-opacity-50"
   >
@@ -40,7 +46,10 @@
           <p class="text-lg font-bold mb-2">选择模型</p>
           <button
             class="text-blue-400 hover:text-blue-500 ml-4"
-            on:click|stopPropagation={fetchMoedls}>刷新</button
+            onclick={(e) => {
+              e.stopPropagation();
+              fetchMoedls();
+            }}>刷新</button
           >
         </div>
         <div>
@@ -63,7 +72,10 @@
         </div>
 
         <p class="text-lg font-bold mt-8 mb-2">服务地址</p>
-        <div on:click|stopPropagation class="rounded bg-gray-200 p-2">
+        <div
+          onclick={(e) => e.stopPropagation()}
+          class="rounded bg-gray-200 p-2"
+        >
           <InplaceEdit bind:value={serverUrl} />
         </div>
 
@@ -77,7 +89,7 @@
           <li>
             <p
               class="cursor-pointer text-blue-400 hover:text-blue-500"
-              on:click={() => {
+              onclick={() => {
                 open(
                   "https://fiture.feishu.cn/docx/Z4rod0wsRoZ0vTxBuUjczBgNneb"
                 );
@@ -90,9 +102,7 @@
 
         <button
           class="w-full mt-12 p-2 bg-red-500 text-white rounded"
-          on:click={() => {
-            dispatch("clearChat");
-          }}>清除聊天历史</button
+          onclick={clearChat}>清除聊天历史</button
         >
       </div>
     </div>

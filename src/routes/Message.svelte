@@ -1,45 +1,78 @@
-<script>
-  import Markdown from "svelte-exmarkdown";
-
-  import { gfmPlugin } from "svelte-exmarkdown/gfm";
-  import rehypeHighlight from "rehype-highlight";
+<script lang="ts">
+  import { marked } from "marked";
+  import hljs from "highlight.js";
   import "highlight.js/styles/github-dark-dimmed.min.css";
 
-  const plugins = [
-    gfmPlugin(),
-    {
-      rehypePlugin: [rehypeHighlight],
-    },
-    { renderer: { a: "strong" } }, // override the default renderer for `a` tag
-  ];
-
   import { fade } from "svelte/transition";
-  import { createEventDispatcher } from "svelte";
 
-  export let name = "";
-  export let model = "";
-  export let message = "";
-  export let isRespOngoing = false;
+  let {
+    name = "",
+    model = "",
+    message = "",
+    isRespOngoing = false,
+    onMessageCopied = () => {},
+    onResendMessage = () => {},
+  }: {
+    name: string;
+    model: string;
+    message: string;
+    isRespOngoing?: boolean;
+    onMessageCopied?: () => void;
+    onResendMessage?: (message: string) => void;
+  } = $props();
 
-  const dispatch = createEventDispatcher();
+  function highlight(code: string, lang: string) {
+    if (hljs.getLanguage(lang)) {
+      return hljs.highlight(code, { language: lang }).value;
+    } else {
+      return code;
+      // return hljs.highlightAuto(code).value;
+    }
+  }
+  const renderer = {
+    code(_code: string, infostring: any, escaped: any): string {
+      const lang = (infostring || "").match(/\S*/)[0];
+      var out = highlight(_code, lang);
+      _code = out;
+      _code = _code.replace(/\n$/, "") + "\n";
+      if (!lang) {
+        return "<pre><code>" + _code + "</code></pre>\n";
+      }
+      return (
+        '<pre><code class="' +
+        // @ts-ignore
+        this.options.langPrefix +
+        lang +
+        '">' +
+        _code +
+        "</code></pre>\n"
+      );
+    },
+    link(href: string, title: string | null | undefined, text: string): string {
+      console.log(href);
+      return `<b>${text}</b>`;
+    },
+  };
 
-  let showActionButtons = false;
+  marked.use({ renderer });
+
+  let showActionButtons = $state(false);
 
   function copyToClipboard() {
     navigator.clipboard.writeText(message);
-    dispatch("copiedMessage");
+    onMessageCopied();
   }
 </script>
 
 <div
   class="p-4 border-b border-gray-200"
-  on:mouseover={() => {
+  onmouseover={() => {
     showActionButtons = true;
   }}
-  on:focus={() => {
+  onfocus={() => {
     showActionButtons = true;
   }}
-  on:mouseleave={() => {
+  onmouseleave={() => {
     showActionButtons = false;
   }}
 >
@@ -50,28 +83,27 @@
     {/if}
     {#if showActionButtons}
       <span transition:fade={{ duration: 300 }}>
-        <button
-          class="ml-4 p-0 text-xs text-blue-400"
-          on:click={copyToClipboard}>复制</button
+        <button class="ml-4 p-0 text-xs text-blue-400" onclick={copyToClipboard}
+          >复制</button
         >
         {#if name === "User"}
           <button
             class="ml-2 p-0 text-xs text-blue-400"
-            on:click={() => {
-              dispatch("resendMessage", { message });
+            onclick={() => {
+              onResendMessage(message);
             }}>再次发送</button
           >
         {/if}
       </span>
     {/if}
   </p>
-  <div class="prose mt-2 max-w-none">
+  <article class="prose mt-2 max-w-none">
     {#if message.length === 0 && isRespOngoing}
       <div class="blink">_</div>
     {:else}
-      <Markdown md={message} {plugins} />
+      {@html marked.parse(message)}
     {/if}
-  </div>
+  </article>
 </div>
 
 <style>
@@ -80,7 +112,7 @@
       opacity: 1;
     }
     50% {
-      opacity: 0;
+      opacity: 0.2;
     }
     100% {
       opacity: 1;
