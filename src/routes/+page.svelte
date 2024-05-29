@@ -17,11 +17,14 @@
   onMount(() => {
     let localChatLog = localStorage.getItem("chatLog");
     chatLog = localChatLog ? JSON.parse(localChatLog) : [];
-    resizeTextarea();
 
     setTimeout(() => {
       scrollToBottom();
     }, 500);
+
+    window.addEventListener("scroll", () => {
+      scrollTime = Date.now();
+    });
   });
 
   let message = "";
@@ -44,6 +47,8 @@
     const genId = () => Math.random().toString(36).substr(2, 9);
 
     if (message.trim() !== "") {
+      scrollToBottom();
+
       let tmpMsg = message;
       message = "";
 
@@ -80,14 +85,24 @@
       isRespOngoing = false;
       respMessage = "";
 
-      await tick();
-      resizeTextarea();
       localStorage.setItem("chatLog", JSON.stringify(chatLog));
     }
   }
 
+  let scrollTime = 0;
+  function shouldAutoScroll() {
+    const threshold = 100; // distance from bottom in pixels
+    const distanceFromBottom =
+      document.documentElement.scrollHeight -
+      window.scrollY -
+      window.innerHeight;
+    const isScrolling = Date.now() - scrollTime < 100;
+    const nearBottom = distanceFromBottom < threshold;
+    return isRespOngoing && nearBottom && !isScrolling;
+  }
+
   afterUpdate(() => {
-    if (isRespOngoing) {
+    if (shouldAutoScroll()) {
       scrollToBottom();
     }
   });
@@ -160,10 +175,12 @@
       rows="2"
       maxlength="4000"
       style="resize: none;"
-      on:keydown={(e) => {
+      on:keydown={async (e) => {
         if (e.key === "Enter" && !e.altKey && !e.shiftKey) {
           e.preventDefault();
           sendMessage();
+          await tick();
+          resizeTextarea();
         }
       }}
       on:input={resizeTextarea}

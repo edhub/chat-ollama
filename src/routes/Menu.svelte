@@ -11,7 +11,18 @@
   export let selectedModel = "";
   export let serverUrl = "";
 
-  let MODELS = ["codegemma", "llama3", "phi3:14b"];
+  let localStorageModels = localStorage.getItem("models");
+  let availableModels = localStorageModels
+    ? JSON.parse(localStorageModels)
+    : ["codegemma"];
+
+  async function fetchMoedls() {
+    const apiListModels = serverUrl + "/api/tags";
+    const resp = await (await fetch(apiListModels)).json();
+    console.log(resp);
+    availableModels = resp.models.map((m) => m.model);
+    localStorage.setItem("models", JSON.stringify(availableModels));
+  }
 </script>
 
 {#if showMenu}
@@ -25,9 +36,15 @@
       class="fixed top-0 right-0 h-full w-64 overflow-auto bg-white border-l border-gray-200"
     >
       <div class="w-64 p-4">
-        <p class="text-lg font-bold mb-2">选择模型</p>
+        <div class="flex flex-row items-baseline">
+          <p class="text-lg font-bold mb-2">选择模型</p>
+          <button
+            class="text-blue-400 hover:text-blue-500 ml-4"
+            on:click|stopPropagation={fetchMoedls}>刷新</button
+          >
+        </div>
         <div>
-          {#each MODELS as model (model)}
+          {#each availableModels as model (model)}
             <div class="flex items-center">
               <input
                 type="radio"

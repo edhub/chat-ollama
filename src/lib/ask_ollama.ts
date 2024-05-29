@@ -11,6 +11,7 @@ export async function* queryOllama(
     model,
     prompt,
     temprature,
+    keep_alive: "90m",
   });
   const resp = await fetch(server + "/api/generate", {
     method: "POST",
