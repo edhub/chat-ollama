@@ -1,11 +1,11 @@
 <script lang="ts">
-  let { value = $bindable("") } = $props();
+  let { value = $bindable("") }: { value: string } = $props();
 
   let editing = $state(false);
   let tempValue = $state(value);
 
   function handleKeydown(event: KeyboardEvent) {
-    if (event.key === "Enter") {
+    if (event.key === "Enter" && event.keyCode === 13) {
       value = tempValue;
       editing = false;
     } else if (event.key === "Escape") {

@@ -1,61 +1,76 @@
 <script lang="ts">
-  import { onDestroy, onMount } from "svelte";
   import { fade } from "svelte/transition";
 
-  let { message = "" } = $props();
-
-  let alignRight = false;
-
-  let visible = $state(false);
-  let positionStyle = $state("");
-
-  onMount(() => {
-    window.addEventListener("mousemove", trackMouse);
-  });
-
-  onDestroy(() => {
-    window.removeEventListener("mousemove", trackMouse);
-  });
-
-  let x = 0;
-  let y = 0;
-
-  function trackMouse(event: MouseEvent) {
-    x = event.clientX;
-    y = event.clientY;
+  interface Cursor {
+    x: number;
+    y: number;
   }
+
+  interface ToastMessage {
+    value: string;
+    position: string;
+  }
+
+  let messageQueue: ToastMessage[] = [];
+
+  let cursor = $state<Cursor>({ x: 0, y: 0 });
 
   function calculatePosition() {
     const windowWidth = window.innerWidth;
-    let toastX = Math.max(30, x + 20);
-    let toastY = Math.max(30, y);
+    let toastX = Math.max(30, cursor.x + 20);
+    let toastY = Math.max(30, cursor.y);
 
-    alignRight = windowWidth - x < 300;
-    toastX = alignRight ? windowWidth - x + 20 : toastX;
+    const alignRight = windowWidth - cursor.x < 300;
+    toastX = alignRight ? windowWidth - cursor.x + 20 : toastX;
 
-    positionStyle = `${alignRight ? "right" : "left"}: ${toastX}px; top: ${toastY}px`;
+    const positionStyle = `${alignRight ? "right" : "left"}: ${toastX}px; top: ${toastY}px`;
+    return positionStyle;
   }
 
-  $effect(() => {
-    if (message.length > 0) {
-      calculatePosition();
+  export function showToast(msg: string) {
+    messageQueue.push({ value: msg, position: calculatePosition() });
+    showToastMessages();
+  }
 
-      visible = true;
-      setTimeout(() => {
-        message = "";
-      }, 1500);
-    } else {
-      visible = false;
-    }
+  let currentToast = $state<ToastMessage>();
+
+  $effect(() => {
+    const trackMouse = (event: MouseEvent) => {
+      cursor = { x: event.clientX, y: event.clientY };
+    };
+
+    window.addEventListener("mousemove", trackMouse);
+
+    return () => window.removeEventListener("mousemove", trackMouse);
   });
+
+  let isToasting = false;
+  async function showToastMessages() {
+    if (isToasting) return;
+    let nextToast = messageQueue.shift();
+
+    while (nextToast) {
+      isToasting = true;
+      currentToast = nextToast;
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      currentToast = undefined;
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      isToasting = false;
+      if (messageQueue.length > 0) {
+        nextToast = messageQueue.shift();
+      } else {
+        break;
+      }
+    }
+  }
 </script>
 
-{#if visible}
+{#if currentToast}
   <div
-    transition:fade={{ duration: 200 }}
-    class="fixed p-2 bg-cyan-400 text-sm rounded shadow-lg"
-    style={positionStyle}
+    transition:fade={{ duration: 150 }}
+    class="fixed p-2 bg-cyan-400 text-sm rounded shadow-lg z-50"
+    style={currentToast?.position}
   >
-    {message}
+    {currentToast?.value}
   </div>
 {/if}

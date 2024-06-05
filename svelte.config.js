@@ -14,6 +14,9 @@ const config = {
     if (warning.code.startsWith("a11y-")) return;
     handler(warning);
   },
+  compilerOptions: {
+    runes: true,
+  },
 };
 
 export default config;

@@ -49,7 +49,6 @@
       );
     },
     link(href: string, title: string | null | undefined, text: string): string {
-      console.log(href);
       return `<b>${text}</b>`;
     },
   };

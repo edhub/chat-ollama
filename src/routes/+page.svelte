@@ -1,10 +1,9 @@
 <script lang="ts">
   import { grabContentFromUrl } from "$lib/grab_web_page";
-  import { onMount, tick } from "svelte";
+  import { getContext, tick, untrack } from "svelte";
   import { queryOllama } from "../lib/ask_ollama";
   import Menu from "./Menu.svelte";
   import Message from "./Message.svelte";
-  import Toast from "./Toast.svelte";
 
   interface Message {
     id: string;
@@ -14,27 +13,10 @@
   }
 
   let chatLog = $state<Message[]>([]);
+  let localChatLog = localStorage.getItem("chatLog");
+  chatLog = localChatLog ? JSON.parse(localChatLog) : [];
 
   let showMenu = $state(false);
-  let selectedModel = $state(
-    localStorage.getItem("selectedModel") ?? "codegemma"
-  );
-  let serverUrl = $state(
-    localStorage.getItem("serverUrl") ?? "http://10.1.22.88:11434"
-  );
-
-  onMount(() => {
-    let localChatLog = localStorage.getItem("chatLog");
-    chatLog = localChatLog ? JSON.parse(localChatLog) : [];
-
-    setTimeout(() => {
-      scrollToBottom();
-    }, 500);
-
-    window.addEventListener("scroll", () => {
-      scrollTime = Date.now();
-    });
-  });
 
   let message = $state("");
 
@@ -50,6 +32,11 @@
 
   let respMessage = $state("");
   let isRespOngoing = $state(false);
+
+  function resendMessage(msg: string) {
+    message = msg;
+    sendMessage();
+  }
 
   async function sendMessage() {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -98,6 +85,14 @@
     }
   }
 
+  $effect(() => {
+    setTimeout(() => scrollToBottom(), 500);
+
+    const updateScrollTime = () => (scrollTime = Date.now());
+    window.addEventListener("scroll", updateScrollTime);
+    return () => window.removeEventListener("scroll", updateScrollTime);
+  });
+
   let scrollTime = 0;
   function shouldAutoScroll() {
     const threshold = 200; // distance from bottom in pixels
@@ -121,14 +116,21 @@
     chatContainer.scrollIntoView({ behavior: "smooth", block: "end" });
   }
 
-  let toastMessage = $state("");
+  let selectedModel = $state(
+    localStorage.getItem("selectedModel") ?? "codegemma"
+  );
 
   $effect(() => {
     if (selectedModel !== "") {
-      localStorage.setItem("selectedModel", selectedModel);
-      showToastMessage("已选模型: " + selectedModel);
+      let model = selectedModel;
+      localStorage.setItem("selectedModel", model);
+      untrack(() => toast.show("已选模型: " + model));
     }
   });
+
+  let serverUrl = $state(
+    localStorage.getItem("serverUrl") ?? "http://10.1.22.88:11434"
+  );
 
   $effect(() => {
     if (serverUrl === "") {
@@ -138,14 +140,7 @@
     localStorage.setItem("serverUrl", serverUrl);
   });
 
-  function resendMessage(msg: string) {
-    message = msg;
-    sendMessage();
-  }
-
-  function showToastMessage(message: string) {
-    toastMessage = message;
-  }
+  let toast: { show: (msg: string) => void } = getContext("toast");
 </script>
 
 <div class="z-0 w-full h-full">
@@ -156,7 +151,7 @@
         {model}
         {message}
         onMessageCopied={() => {
-          showToastMessage("消息已复制到剪贴板");
+          toast.show("消息已复制到剪贴板");
         }}
         onResendMessage={resendMessage}
       />
@@ -183,12 +178,11 @@
       id="chat-input"
       placeholder="输入消息..."
       bind:value={message}
-      class="m-2 p-2 rounded border flex-grow outline-none"
+      class="m-2 p-2 resize-none rounded border flex-grow outline-none"
       rows="2"
       maxlength="4000"
-      style="resize: none;"
       onkeydown={async (e) => {
-        if (e.key === "Enter" && !e.altKey && !e.shiftKey) {
+        if (e.key === "Enter" && e.keyCode === 13 && !e.altKey && !e.shiftKey) {
           e.preventDefault();
           sendMessage();
           await tick();
@@ -213,8 +207,6 @@
 >
   <span class="iconify simple-line-icons--menu"> </span>
 </button>
-
-<Toast message={toastMessage} />
 
 <Menu
   bind:showMenu
