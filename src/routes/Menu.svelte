@@ -78,9 +78,9 @@
         >
           <InplaceEdit bind:value={serverUrl} />
         </div>
-        
+
         <a href="/Help">
-          <div class="w-full p-2 mt-10 rounded inline-flex items-center justify-center text-white bg-blue-400 hover:bg-blue-500"
+          <div class="mt-10 text-lg font-bond text-blue-400 hover:text-blue-500"
           >help page
         </div>
         </a>

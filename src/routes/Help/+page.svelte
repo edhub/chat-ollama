@@ -4,7 +4,8 @@
         window.history.back();
     }
     async function openLink() {
-    await open('https://github.com/edhub/chat-ollama')}
+        await open('https://github.com/edhub/chat-ollama');
+    }
 </script>
 
 <t1 class="flex items-centers  mb-5 ml-4 p-0 text-4xl font-bond text-blue-400">
