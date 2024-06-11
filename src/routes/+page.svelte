@@ -175,7 +175,7 @@
     class="chat-input fixed bottom-0 w-full bg-white flex items-end"
     onsubmit={(e) => {
       e.preventDefault();
-      sendMessage;
+      sendMessage();
     }}
   >
     <textarea

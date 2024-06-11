@@ -78,30 +78,15 @@
         >
           <InplaceEdit bind:value={serverUrl} />
         </div>
-
-        <p class="text-lg font-bold mt-8 mb-2">FAQ</p>
-        <ul class="list-disc pl-4 space-y-3">
-          <li>每条对话都是独立的，目前没有做多轮对话。</li>
-          <li>可以总结网页，给个地址就行。</li>
-          <li>
-            本地大模型能力稍弱一些，但胜任简单的任务没问题，比如翻译，给点代码建议，试试便知。
-          </li>
-          <li>
-            <p
-              class="cursor-pointer text-blue-400 hover:text-blue-500"
-              onclick={() => {
-                open(
-                  "https://fiture.feishu.cn/docx/Z4rod0wsRoZ0vTxBuUjczBgNneb"
-                );
-              }}
-            >
-              查看帮助文档
-            </p>
-          </li>
-        </ul>
+        
+        <a href="/Help">
+          <div class="w-full p-2 mt-10 rounded inline-flex items-center justify-center text-white bg-blue-400 hover:bg-blue-500"
+          >help page
+        </div>
+        </a>
 
         <button
-          class="w-full mt-12 p-2 bg-red-500 text-white rounded"
+          class="w-full p-2 mt-10 bg-red-500 text-white rounded"
           onclick={clearChat}>清除聊天历史</button
         >
       </div>
