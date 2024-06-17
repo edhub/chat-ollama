@@ -6,7 +6,6 @@
   let {
     showMenu = $bindable(false),
     selectedModel = $bindable(),
-    // qwenModels = $bindable(),
     serverUrl = $bindable(),
     qwenServerUrl = $bindable(),
     isollama = $bindable(),
@@ -14,7 +13,6 @@
   }: {
     showMenu: boolean;
     selectedModel: string;
-    qwenModels: string;
     serverUrl: string;
     qwenServerUrl: string;
     isollama: boolean;
@@ -23,13 +21,13 @@
 
   let localStorageModels = localStorage.getItem("models");
   let availableModels = $state(
-    localStorageModels ? JSON.parse(localStorageModels) : ["codegemma"]
+    localStorageModels ? JSON.parse(localStorageModels) : ["codegemma"],
   );
   // 从服务器获取模型列表并更新到本地存储到模型列表中【在这里改变qwen本地存储setting】
   async function fetchMoedls() {
     const apiListModels = serverUrl + "/api/tags";
     const resp = await (await fetch(apiListModels)).json();
-    availableModels = resp.models.map((m: any) => m.model);//这里面每个元素都是models属性，这个是用来function到吗？还是只是名字
+    availableModels = resp.models.map((m: any) => m.model);
     localStorage.setItem("models", JSON.stringify(availableModels));
   }
   const qwenPlus = "qwen-plus";
@@ -45,7 +43,7 @@
       transition:slide={{ duration: 250, axis: "x" }}
       class="fixed top-0 right-0 h-full w-64 overflow-auto bg-white border-l border-gray-200"
     >
-<!------------------------本地模型模块---------------------------------->
+      <!------------------------本地模型模块---------------------------------->
       <div class="w-64 p-4">
         <div class="flex flex-row items-baseline">
           <p class="text-lg font-bold mb-2">选择模型</p>
@@ -66,7 +64,7 @@
                 name="model"
                 value={model}
                 bind:group={selectedModel}
-                onchange={() => isollama = true}              
+                onchange={() => (isollama = true)}
               />
               <label
                 for={model}
@@ -78,45 +76,44 @@
         </div>
 
         <p class="text-lg font-bold mt-5 mb-4 mb-2">服务地址</p>
-        <div 
+        <div
           onclick={(e) => e.stopPropagation()}
           class="rounded bg-gray-200 p-2"
         >
-          <InplaceEdit bind:value={serverUrl}/>
+          <InplaceEdit bind:value={serverUrl} />
         </div>
-<!-----------------qwen------------------------>
-          <div class="mt-8">
+        <!-----------------qwen------------------------>
+        <div class="mt-8">
           <p class="text-lg font-bold mb-2">通义千问</p>
-              <div class="flex items-center mt-3">
-                <input
-                  type="radio"
-                  id={qwenPlus}
-                  name="qwen"
-                  value={qwenPlus}
-                  onchange={() => isollama = false}
-                />
-                <label
-                  for={qwenPlus}
-                  class="ml-1 w-full py-1 px-2 hover:bg-gray-300 rounded"
-                  >qwen-plus</label
-                >
-              </div>
-              <p class="text-lg font-bold mt-5 mb-4 mb-2">服务地址</p>
-              <div 
-                onclick={(e) => e.stopPropagation()}
-                class="rounded bg-gray-200 p-2"
-              >
-                <InplaceEdit bind:value={ qwenServerUrl }/>
-              </div>
+          <div class="flex items-center mt-3">
+            <input
+              type="radio"
+              id={qwenPlus}
+              name="qwen"
+              value={qwenPlus}
+              onchange={() => (isollama = false)}
+            />
+            <label
+              for={qwenPlus}
+              class="ml-1 w-full py-1 px-2 hover:bg-gray-300 rounded"
+              >qwen-plus</label
+            >
           </div>
-
-
-       
+          <p class="text-lg font-bold mt-5 mb-4 mb-2">服务地址</p>
+          <div
+            onclick={(e) => e.stopPropagation()}
+            class="rounded bg-gray-200 p-2"
+          >
+            <InplaceEdit bind:value={qwenServerUrl} />
+          </div>
+        </div>
 
         <a href="/Help">
-          <div class="mt-10 text-lg font-bond text-blue-400 hover:text-blue-500"
-          >help page
-        </div>
+          <div
+            class="mt-10 text-lg font-bond text-blue-400 hover:text-blue-500"
+          >
+            help page
+          </div>
         </a>
 
         <button
