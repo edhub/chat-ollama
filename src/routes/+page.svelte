@@ -12,17 +12,77 @@
     message: string;
   }
 
+  // 检查tauri初始化
+  import { onMount } from "svelte";
+  import { event } from "@tauri-apps/api";
+
+  let isInTauri = false;
+
+  async function checkTauriEnvironment() {
+    // 检查是否在Tauri环境中
+    isInTauri = typeof window.__TAURI__ !== "undefined";
+
+    if (isInTauri) {
+      // 检查Tauri是否已初始化
+      try {
+        await event.listen("tauri://ready", () => {
+          console.log("Tauri is ready");
+          // Tauri已初始化，可以在这里执行更多的操作
+        });
+      } catch (error) {
+        console.error("Error listening to Tauri ready event:", error);
+      }
+    } else {
+      console.log("Not running in a Tauri environment");
+    }
+  }
+
+  onMount(() => {
+    checkTauriEnvironment();
+  });
+  // 查看
+  async function testQueryQwen() {
+    const testMessage = {
+      messages: [
+        {
+          role: "system",
+          content: "You are a helpful assistant.",
+        },
+        {
+          role: "user",
+          content: "你好，哪个公园距离我最近？",
+        },
+      ],
+    };
+    const testModel = "Qwen"; // 根据需要替换为实际模型
+    const testServerUrl =
+      "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation";
+
+    try {
+      for await (const output of queryQwen(
+        testMessage,
+        testModel,
+        testServerUrl,
+      )) {
+        console.log(output);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
   let chatLog = $state<Message[]>([]);
   let localChatLog = localStorage.getItem("chatLog");
   chatLog = localChatLog ? JSON.parse(localChatLog) : [];
-
+  // let qwenModels = $state("qwenPlus");
   let showMenu = $state(false);
-
   let message = $state("");
-
+  let isollama = $state(false);
   let chatContainer: HTMLDivElement;
   let textarea: HTMLTextAreaElement;
-
+  let qwenServerUrl =
+    "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation";
+  //输入框自动调整
   function resizeTextarea() {
     textarea.style.height = "auto";
     let maxHeight = window.innerHeight * 0.8; // 80% of the window height
@@ -166,39 +226,85 @@
     {/if}
   </div>
 
-  <form
-    class="chat-input fixed bottom-0 w-full bg-white flex items-end"
-    onsubmit={(e) => {
-      e.preventDefault();
-      sendMessage();
-    }}
-  >
-    <textarea
-      bind:this={textarea}
-      id="chat-input"
-      placeholder="输入消息..."
-      bind:value={message}
-      class="m-2 p-2 resize-none rounded border flex-grow outline-none"
-      rows="2"
-      maxlength="4000"
-      onkeydown={async (e) => {
-        if (e.key === "Enter" && e.keyCode === 13 && !e.altKey && !e.shiftKey) {
-          e.preventDefault();
-          sendMessage();
-          await tick();
-          resizeTextarea();
-        }
+  {#if isollama === true}
+    <form
+      class="chat-input fixed bottom-0 w-full bg-white flex items-end"
+      onsubmit={(e) => {
+        e.preventDefault();
+        sendMessage();
       }}
-      oninput={resizeTextarea}
-    ></textarea>
-
-    <button
-      type="submit"
-      class="m-2 ml-0 p-2 rounded bg-blue-400 hover:bg-blue-500 text-white"
     >
-      <span class="iconify simple-line-icons--paper-plane"></span>
-    </button>
-  </form>
+      <textarea
+        bind:this={textarea}
+        id="chat-input"
+        placeholder="输入消息..."
+        bind:value={message}
+        class="m-2 p-2 resize-none rounded border flex-grow outline-none"
+        rows="2"
+        maxlength="4000"
+        onkeydown={async (e) => {
+          if (
+            e.key === "Enter" &&
+            e.keyCode === 13 &&
+            !e.altKey &&
+            !e.shiftKey
+          ) {
+            e.preventDefault();
+            sendMessage();
+            await tick();
+            resizeTextarea();
+          }
+        }}
+        oninput={resizeTextarea}
+      ></textarea>
+
+      <button
+        type="submit"
+        class="m-2 ml-0 p-2 rounded bg-blue-400 hover:bg-blue-500 text-white"
+      >
+        <span class="iconify simple-line-icons--paper-plane"></span>
+      </button>
+    </form>
+  {:else}
+    <form
+      class="chat-input fixed bottom-0 w-full bg-white flex items-end"
+      onsubmit={(e) => {
+        e.preventDefault();
+        sendMessageqwen();
+      }}
+    >
+      <textarea
+        bind:this={textarea}
+        id="chat-input"
+        placeholder="输入消息..."
+        bind:value={message}
+        class="m-2 p-2 resize-none rounded border flex-grow outline-none"
+        rows="2"
+        maxlength="4000"
+        onkeydown={async (e) => {
+          if (
+            e.key === "Enter" &&
+            e.keyCode === 13 &&
+            !e.altKey &&
+            !e.shiftKey
+          ) {
+            e.preventDefault();
+            sendMessageqwen();
+            await tick();
+            resizeTextarea();
+          }
+        }}
+        oninput={resizeTextarea}
+      ></textarea>
+
+      <button
+        type="submit"
+        class="m-2 ml-0 p-2 rounded bg-blue-400 hover:bg-blue-500 text-white"
+      >
+        <span class="iconify simple-line-icons--paper-plane"></span>
+      </button>
+    </form>
+  {/if}
 </div>
 
 <button
@@ -208,10 +314,17 @@
   <span class="iconify simple-line-icons--menu"> </span>
 </button>
 
+<button
+  class="fixed top-0 right-0 m-2 p-2 rounded bg-blue-400 hover:bg-blue-500 text-white"
+  onclick={testQueryQwen}>测试 queryQwen</button
+>
+
 <Menu
   bind:showMenu
   bind:selectedModel
   bind:serverUrl
+  bind:qwenServerUrl
+  bind:isollama
   clearChat={() => {
     chatLog = [];
     localStorage.removeItem("chatLog");
