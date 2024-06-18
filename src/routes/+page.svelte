@@ -30,7 +30,6 @@
     let desiredHeight = Math.min(textarea.scrollHeight, maxHeight);
     textarea.style.height = desiredHeight + "px";
   }
-
   let respMessage = $state("");
   let isRespOngoing = $state(false);
 
@@ -38,6 +37,7 @@
     message = msg;
     sendMessage();
   }
+
   // ollama-sendmessage
   async function sendMessage() {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -45,18 +45,12 @@
 
     if (message.trim() !== "") {
       scrollToBottom();
-
-      //这里输入信息
       let tmpMsg = message;
       message = "";
       chatLog.push({ id: genId(), name: "User", model: "", message: tmpMsg });
       chatLog = chatLog;
-
-      //【响应开始】
       isRespOngoing = true; // 模型开始运转
-      // url匹配提取：如果有对应的url的话会替换成url和对应的内容
       const url = tmpMsg.match(urlRegex);
-
       if (url) {
         for (let i = 0; i < url.length; i++) {
           const content =
@@ -66,24 +60,18 @@
       }
 
       const deltaReader = queryOllama(tmpMsg, selectedModel, serverUrl);
-      //完成queryollama调用：如果tmpmsg中有url的话会替换成url和对应的内容；没有的话会直接在tmpmsg中输入message内容
-
-      //【这里开始处理输出内容】
       for await (const delta of deltaReader) {
         respMessage += delta;
       }
-
       respMessage = respMessage.length > 0 ? respMessage : "好像出错啦";
-
       chatLog.push({
         id: genId(),
         name: "Ollama",
         model: selectedModel,
         message: respMessage,
-      }); //输入输出内容都是放在chatlog里面
+      });
       chatLog = chatLog;
 
-      //【响应结束】 清空函数机制变量。记录保存本地
       isRespOngoing = false;
       respMessage = "";
       localStorage.setItem("chatLog", JSON.stringify(chatLog));
@@ -102,7 +90,6 @@
 
       chatLog.push({ id: genId(), name: "User", model: "", message: tmpMsg });
       chatLog = chatLog;
-
       isRespOngoing = true;
 
       //url提取无法作用
@@ -141,10 +128,16 @@
       localStorage.setItem("chatLog", JSON.stringify(chatLog));
     }
   }
+  async function sendMSG() {
+    if (isollama === true) {
+      sendMessage();
+    } else {
+      sendMessageqwen();
+    }
+  }
 
   $effect(() => {
     setTimeout(() => scrollToBottom(), 500);
-
     const updateScrollTime = () => (scrollTime = Date.now());
     window.addEventListener("scroll", updateScrollTime);
     return () => window.removeEventListener("scroll", updateScrollTime);
@@ -177,11 +170,14 @@
     localStorage.getItem("selectedModel") ?? "codegemma",
   );
 
+  //选择之后提示选择模型
   $effect(() => {
-    if (selectedModel !== "") {
-      let model = selectedModel;
-      localStorage.setItem("selectedModel", model);
+    if (AllModel !== "") {
+      let model = AllModel;
       untrack(() => toast.show("已选模型: " + model));
+      if (isollama) {
+        localStorage.setItem("selectedModel", model);
+      }
     }
   });
 
@@ -195,6 +191,13 @@
     }
     serverUrl = serverUrl.replace(/\/$/, ""); // trim last slash
     localStorage.setItem("serverUrl", serverUrl);
+  });
+
+  let modelname = $state("");
+  let AllModel = $state("");
+  $effect(() => {
+    modelname = isollama ? "Ollama" : "Qwen";
+    AllModel = isollama ? selectedModel : "qwen-plus";
   });
 
   let toast: { show: (msg: string) => void } = getContext("toast");
@@ -215,15 +218,21 @@
     {/each}
     {#if isRespOngoing}
       <Message
-        name="Ollama"
-        model={selectedModel}
+        name={modelname}
+        model={AllModel}
         message={respMessage}
         {isRespOngoing}
       />
     {/if}
   </div>
 
-  {#if isollama === true}
+  <form
+    class="chat-input fixed bottom-0 w-full bg-white flex items-end"
+    onsubmit={(e) => {
+      e.preventDefault();
+      sendMSG();
+    }}
+  >
     <div class="fixed bottom-0 w-full bg-white flex items-end">
       <textarea
         bind:this={textarea}
@@ -241,7 +250,7 @@
             !e.shiftKey
           ) {
             e.preventDefault();
-            sendMessage();
+            sendMSG();
             await tick();
             resizeTextarea();
           }
@@ -255,47 +264,7 @@
         <span class="iconify simple-line-icons--paper-plane"></span>
       </button>
     </div>
-  {:else}
-    <div class="fixed bottom-0 w-full bg-white flex items-end">
-      <form
-        class="chat-input fixed bottom-0 w-full bg-white flex items-end"
-        onsubmit={(e) => {
-          e.preventDefault();
-          sendMessageqwen();
-        }}
-      >
-        <textarea
-          bind:this={textarea}
-          id="chat-input"
-          placeholder="输入消息..."
-          bind:value={message}
-          class="m-2 p-2 resize-none rounded border flex-grow outline-none"
-          rows="2"
-          maxlength="4000"
-          onkeydown={async (e) => {
-            if (
-              e.key === "Enter" &&
-              e.keyCode === 13 &&
-              !e.altKey &&
-              !e.shiftKey
-            ) {
-              e.preventDefault();
-              sendMessageqwen();
-              await tick();
-              resizeTextarea();
-            }
-          }}
-          oninput={resizeTextarea}
-        ></textarea>
-        <button
-          type="submit"
-          class="m-2 ml-0 p-2 rounded bg-blue-400 hover:bg-blue-500 text-white"
-        >
-          <span class="iconify simple-line-icons--paper-plane"></span>
-        </button>
-      </form>
-    </div>
-  {/if}
+  </form>
 
   <button
     class="fixed top-0 right-0 m-2 p-2 rounded bg-blue-400 hover:bg-blue-500 text-white"

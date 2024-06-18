@@ -23,6 +23,7 @@
   let availableModels = $state(
     localStorageModels ? JSON.parse(localStorageModels) : ["codegemma"],
   );
+  let Models = availableModels + ["qwen-plus"];
   // 从服务器获取模型列表并更新到本地存储到模型列表中【在这里改变qwen本地存储setting】
   async function fetchMoedls() {
     const apiListModels = serverUrl + "/api/tags";
@@ -30,7 +31,17 @@
     availableModels = resp.models.map((m: any) => m.model);
     localStorage.setItem("models", JSON.stringify(availableModels));
   }
-  const qwenPlus = "qwen-plus";
+
+  let qwenPlus = $state("qwen-plus");
+  let selectedOption = $state("");
+  $effect(() => {
+    if (availableModels.includes(selectedOption)) {
+      selectedModel = selectedOption;
+      isollama = true;
+    } else if (selectedOption === qwenPlus) {
+      isollama = false;
+    }
+  });
 </script>
 
 {#if showMenu}
@@ -43,7 +54,6 @@
       transition:slide={{ duration: 250, axis: "x" }}
       class="fixed top-0 right-0 h-full w-64 overflow-auto bg-white border-l border-gray-200"
     >
-      <!------------------------本地模型模块---------------------------------->
       <div class="w-64 p-4">
         <div class="flex flex-row items-baseline">
           <p class="text-lg font-bold mb-2">选择模型</p>
@@ -55,6 +65,7 @@
             }}>刷新</button
           >
         </div>
+        <!------------------------ollama---------------------------------->
         <div>
           {#each availableModels as model (model)}
             <div class="flex items-center">
@@ -63,8 +74,8 @@
                 id={model}
                 name="model"
                 value={model}
-                bind:group={selectedModel}
-                onchange={() => (isollama = true)}
+                bind:group={selectedOption}
+                onchange={() => (selectedOption = selectedModel)}
               />
               <label
                 for={model}
@@ -74,7 +85,6 @@
             </div>
           {/each}
         </div>
-
         <p class="text-lg font-bold mt-5 mb-4 mb-2">服务地址</p>
         <div
           onclick={(e) => e.stopPropagation()}
@@ -89,9 +99,10 @@
             <input
               type="radio"
               id={qwenPlus}
-              name="qwen"
-              value={qwenPlus}
-              onchange={() => (isollama = false)}
+              name="model"
+              value="qwen-plus"
+              bind:group={selectedOption}
+              onchange={() => (selectedOption = qwenPlus)}
             />
             <label
               for={qwenPlus}
@@ -99,10 +110,11 @@
               >qwen-plus</label
             >
           </div>
-          <p class="text-lg font-bold mt-5 mb-4 mb-2">服务地址</p>
+          <p class="text-lg font-bold mt-5 mb-4">服务地址</p>
           <div
             onclick={(e) => e.stopPropagation()}
             class="rounded bg-gray-200 p-2"
+            style="word-break:break-all; overflow-wrap: break-word;"
           >
             <InplaceEdit bind:value={qwenServerUrl} />
           </div>

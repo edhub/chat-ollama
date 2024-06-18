@@ -29,17 +29,20 @@ export async function* queryQwen(
     },
   );
 
-  //检查是否有响应
+  const respmsg = await resp.text();
+
   if (!resp.ok) {
-    yield resp.text(); // 如果函数没有响应就会在这里返回错误信息并暂停执行
+    console.log("error is", respmsg);
     console.log("server is", server);
+    yield "服务器出错啦！";
     return;
   }
-  // yield resp.text();
 
-  // 输出数据
-  const respmsg: string = JSON.parse(await resp.text()).output.text;
-  yield respmsg;
+  try {
+    yield JSON.parse(respmsg).output.text;
+  } catch (e) {
+    yield "解析出错啦！";
+  }
 }
 
 // const input:object ={
