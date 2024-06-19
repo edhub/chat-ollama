@@ -1,7 +1,6 @@
 <script lang="ts">
   import { fade, slide } from "svelte/transition";
   import InplaceEdit from "./InplaceEdit.svelte";
-  import { open } from "@tauri-apps/plugin-shell";
 
   let {
     showMenu = $bindable(false),
@@ -23,15 +22,12 @@
   let availableModels = $state(
     localStorageModels ? JSON.parse(localStorageModels) : ["codegemma"],
   );
-  let Models = availableModels + ["qwen-plus"];
-  // 从服务器获取模型列表并更新到本地存储到模型列表中【在这里改变qwen本地存储setting】
   async function fetchMoedls() {
     const apiListModels = serverUrl + "/api/tags";
     const resp = await (await fetch(apiListModels)).json();
     availableModels = resp.models.map((m: any) => m.model);
     localStorage.setItem("models", JSON.stringify(availableModels));
   }
-
   let qwenPlus = $state("qwen-plus");
   let selectedOption = $state("");
   $effect(() => {
@@ -52,20 +48,21 @@
   >
     <div
       transition:slide={{ duration: 250, axis: "x" }}
-      class="fixed top-0 right-0 h-full w-64 overflow-auto bg-white border-l border-gray-200"
+      class="fixed mb-2 top-0 right-0 h-full w-64 overflow-auto bg-white border-l border-gray-200"
     >
       <div class="w-64 p-4">
-        <div class="flex flex-row items-baseline">
-          <p class="text-lg font-bold mb-2">选择模型</p>
+        <div class="mb-1 space-x-2">
+          <p class="text-xl font-bold flex items-center justify-center">
+            ollama
+          </p>
           <button
-            class="text-blue-400 hover:text-blue-500 ml-4"
+            class="text-blue-400 hover:text-blue-500"
             onclick={(e) => {
               e.stopPropagation();
               fetchMoedls();
             }}>刷新</button
           >
         </div>
-        <!------------------------ollama---------------------------------->
         <div>
           {#each availableModels as model (model)}
             <div class="flex items-center">
@@ -85,16 +82,15 @@
             </div>
           {/each}
         </div>
-        <p class="text-lg font-bold mt-5 mb-4 mb-2">服务地址</p>
         <div
           onclick={(e) => e.stopPropagation()}
-          class="rounded bg-gray-200 p-2"
+          class="rounded bg-gray-100 p-2 mt-3"
         >
           <InplaceEdit bind:value={serverUrl} />
         </div>
-        <!-----------------qwen------------------------>
-        <div class="mt-8">
-          <p class="text-lg font-bold mb-2">通义千问</p>
+        <p class="text-xs font-bold mt-2 mb-4 bg-white">*点击修改服务地址</p>
+        <div class="mt-8 mb-8">
+          <p class="text-xl font-bold mt-4 mb-2 text-center">Qwen</p>
           <div class="flex items-center mt-3">
             <input
               type="radio"
@@ -110,28 +106,38 @@
               >qwen-plus</label
             >
           </div>
-          <p class="text-lg font-bold mt-5 mb-4">服务地址</p>
           <div
             onclick={(e) => e.stopPropagation()}
-            class="rounded bg-gray-200 p-2"
-            style="word-break:break-all; overflow-wrap: break-word;"
+            class="rounded bg-gray-100 p-2 mt-3"
+            style="word-break:break-all;overflow-wrap: break-word;"
           >
             <InplaceEdit bind:value={qwenServerUrl} />
           </div>
+          <p class="text-xs font-bold mt-2 mb-10">*点击修改服务地址</p>
         </div>
-
-        <a href="/Help">
-          <div
-            class="mt-10 text-lg font-bond text-blue-400 hover:text-blue-500"
+        <div class="flex justify-between">
+          <a href="/Help">
+            <div
+              class="flex justify-head p-2 mt-3 mr-8 rounded hover:bg-blue-100"
+            >
+              <span
+                class="iconify simple-line-icons--question text-blue-500"
+                style="font-size:48px;"
+              >
+              </span>
+            </div>
+          </a>
+          <button
+            class="p-2 mt-3 text-white rounded hover:bg-blue-100"
+            onclick={clearChat}
           >
-            help page
-          </div>
-        </a>
-
-        <button
-          class="w-full p-2 mt-10 bg-red-500 text-white rounded"
-          onclick={clearChat}>清除聊天历史</button
-        >
+            <span
+              class="iconify simple-line-icons--trash font-bond text-blue-500"
+              style="font-size:48px;"
+            >
+            </span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
