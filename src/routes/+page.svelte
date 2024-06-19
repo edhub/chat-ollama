@@ -2,6 +2,7 @@
   import { grabContentFromUrl } from "$lib/grab_web_page";
   import { getContext, tick, untrack } from "svelte";
   import { queryOllama } from "../lib/ask_ollama";
+  import { queryQwen } from "../lib/qwen";
   import Menu from "./Menu.svelte";
   import Message from "./Message.svelte";
 
@@ -15,13 +16,13 @@
   let chatLog = $state<Message[]>([]);
   let localChatLog = localStorage.getItem("chatLog");
   chatLog = localChatLog ? JSON.parse(localChatLog) : [];
-
   let showMenu = $state(false);
-
   let message = $state("");
-
+  let isollama = $state(false);
   let chatContainer: HTMLDivElement;
   let textarea: HTMLTextAreaElement;
+  let qwenServerUrl =
+    "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation";
 
   function resizeTextarea() {
     textarea.style.height = "auto";
@@ -29,7 +30,6 @@
     let desiredHeight = Math.min(textarea.scrollHeight, maxHeight);
     textarea.style.height = desiredHeight + "px";
   }
-
   let respMessage = $state("");
   let isRespOngoing = $state(false);
 
@@ -38,7 +38,47 @@
     sendMessage();
   }
 
+  // ollama-sendmessage
   async function sendMessage() {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const genId = () => Math.random().toString(36).substr(2, 9);
+
+    if (message.trim() !== "") {
+      scrollToBottom();
+      let tmpMsg = message;
+      message = "";
+      chatLog.push({ id: genId(), name: "User", model: "", message: tmpMsg });
+      chatLog = chatLog;
+      isRespOngoing = true; // 模型开始运转
+      const url = tmpMsg.match(urlRegex);
+      if (url) {
+        for (let i = 0; i < url.length; i++) {
+          const content =
+            (await grabContentFromUrl(url[i])) || "(无法打开这个网页)";
+          tmpMsg = tmpMsg.replace(url[i], `${url[i]} ${content}`);
+        }
+      }
+
+      const deltaReader = queryOllama(tmpMsg, selectedModel, serverUrl);
+      for await (const delta of deltaReader) {
+        respMessage += delta;
+      }
+      respMessage = respMessage.length > 0 ? respMessage : "好像出错啦";
+      chatLog.push({
+        id: genId(),
+        name: "Ollama",
+        model: selectedModel,
+        message: respMessage,
+      });
+      chatLog = chatLog;
+
+      isRespOngoing = false;
+      respMessage = "";
+      localStorage.setItem("chatLog", JSON.stringify(chatLog));
+    }
+  }
+  // qwen-sendmessage
+  async function sendMessageqwen() {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     const genId = () => Math.random().toString(36).substr(2, 9);
 
@@ -52,8 +92,8 @@
       chatLog = chatLog;
       isRespOngoing = true;
 
+      //url提取无法作用
       const url = tmpMsg.match(urlRegex);
-
       if (url) {
         for (let i = 0; i < url.length; i++) {
           const content =
@@ -61,33 +101,43 @@
           tmpMsg = tmpMsg.replace(url[i], `${url[i]} ${content}`);
         }
       }
-
-      const deltaReader = queryOllama(tmpMsg, selectedModel, serverUrl);
-
+      let Msg = {
+        messages: [
+          {
+            role: "user",
+            content: tmpMsg,
+          },
+        ],
+      };
+      //console.log(Msg);
+      const deltaReader = queryQwen(Msg, "qwen-plus", qwenServerUrl);
       for await (const delta of deltaReader) {
         respMessage += delta;
       }
-
+      //console.log(respMessage);
       respMessage = respMessage.length > 0 ? respMessage : "好像出错啦";
-
       chatLog.push({
         id: genId(),
-        name: "Ollama",
-        model: selectedModel,
+        name: "Qwen",
+        model: "qwen-plus",
         message: respMessage,
       });
       chatLog = chatLog;
-
       isRespOngoing = false;
       respMessage = "";
-
       localStorage.setItem("chatLog", JSON.stringify(chatLog));
+    }
+  }
+  async function sendMSG() {
+    if (isollama === true) {
+      sendMessage();
+    } else {
+      sendMessageqwen();
     }
   }
 
   $effect(() => {
     setTimeout(() => scrollToBottom(), 500);
-
     const updateScrollTime = () => (scrollTime = Date.now());
     window.addEventListener("scroll", updateScrollTime);
     return () => window.removeEventListener("scroll", updateScrollTime);
@@ -117,19 +167,22 @@
   }
 
   let selectedModel = $state(
-    localStorage.getItem("selectedModel") ?? "codegemma"
+    localStorage.getItem("selectedModel") ?? "codegemma",
   );
 
+  //选择之后提示选择模型
   $effect(() => {
-    if (selectedModel !== "") {
-      let model = selectedModel;
-      localStorage.setItem("selectedModel", model);
+    if (AllModel !== "") {
+      let model = AllModel;
       untrack(() => toast.show("已选模型: " + model));
+      if (isollama) {
+        localStorage.setItem("selectedModel", model);
+      }
     }
   });
 
   let serverUrl = $state(
-    localStorage.getItem("serverUrl") ?? "http://10.1.22.88:11434"
+    localStorage.getItem("serverUrl") ?? "http://10.1.22.88:11434",
   );
 
   $effect(() => {
@@ -138,6 +191,13 @@
     }
     serverUrl = serverUrl.replace(/\/$/, ""); // trim last slash
     localStorage.setItem("serverUrl", serverUrl);
+  });
+
+  let modelname = $state("");
+  let AllModel = $state("");
+  $effect(() => {
+    modelname = isollama ? "Ollama" : "Qwen";
+    AllModel = isollama ? selectedModel : "qwen-plus";
   });
 
   let toast: { show: (msg: string) => void } = getContext("toast");
@@ -158,8 +218,8 @@
     {/each}
     {#if isRespOngoing}
       <Message
-        name="Ollama"
-        model={selectedModel}
+        name={modelname}
+        model={AllModel}
         message={respMessage}
         {isRespOngoing}
       />
@@ -170,48 +230,56 @@
     class="chat-input fixed bottom-0 w-full bg-white flex items-end"
     onsubmit={(e) => {
       e.preventDefault();
-      sendMessage();
+      sendMSG();
     }}
   >
-    <textarea
-      bind:this={textarea}
-      id="chat-input"
-      placeholder="输入消息..."
-      bind:value={message}
-      class="m-2 p-2 resize-none rounded border flex-grow outline-none"
-      rows="2"
-      maxlength="4000"
-      onkeydown={async (e) => {
-        if (e.key === "Enter" && e.keyCode === 13 && !e.altKey && !e.shiftKey) {
-          e.preventDefault();
-          sendMessage();
-          await tick();
-          resizeTextarea();
-        }
-      }}
-      oninput={resizeTextarea}
-    ></textarea>
-
-    <button
-      type="submit"
-      class="m-2 ml-0 p-2 rounded bg-blue-400 hover:bg-blue-500 text-white"
-    >
-      <span class="iconify simple-line-icons--paper-plane"></span>
-    </button>
+    <div class="fixed bottom-0 w-full bg-white flex items-end">
+      <textarea
+        bind:this={textarea}
+        id="chat-input"
+        placeholder="输入消息..."
+        bind:value={message}
+        class="m-2 p-2 resize-none rounded border flex-grow outline-none"
+        rows="2"
+        maxlength="4000"
+        onkeydown={async (e) => {
+          if (
+            e.key === "Enter" &&
+            e.keyCode === 13 &&
+            !e.altKey &&
+            !e.shiftKey
+          ) {
+            e.preventDefault();
+            sendMSG();
+            await tick();
+            resizeTextarea();
+          }
+        }}
+        oninput={resizeTextarea}
+      ></textarea>
+      <button
+        type="submit"
+        class="m-2 ml-0 p-2 rounded bg-blue-400 hover:bg-blue-500 text-white"
+      >
+        <span class="iconify simple-line-icons--paper-plane"></span>
+      </button>
+    </div>
   </form>
-</div>
 
-<button
-  class="fixed top-0 right-0 m-2 p-2 rounded bg-blue-400 hover:bg-blue-500 text-white"
-  onclick={() => (showMenu = true)}
->
-  <span class="iconify simple-line-icons--menu"> </span>
-</button>
+  <button
+    class="fixed top-0 right-0 m-2 p-2 rounded bg-blue-400 hover:bg-blue-500 text-white"
+    onclick={() => (showMenu = true)}
+  >
+    <span class="iconify simple-line-icons--menu"> </span>
+  </button>
+</div>
 
 <Menu
   bind:showMenu
   bind:selectedModel
   bind:serverUrl
+  bind:qwenServerUrl
+  bind:isollama
   clearChat={() => {
     chatLog = [];
     localStorage.removeItem("chatLog");

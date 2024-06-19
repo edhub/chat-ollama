@@ -1,32 +1,47 @@
 <script lang="ts">
   import { fade, slide } from "svelte/transition";
   import InplaceEdit from "./InplaceEdit.svelte";
-
   import { open } from "@tauri-apps/plugin-shell";
 
   let {
     showMenu = $bindable(false),
     selectedModel = $bindable(),
     serverUrl = $bindable(),
+    qwenServerUrl = $bindable(),
+    isollama = $bindable(),
     clearChat,
   }: {
     showMenu: boolean;
     selectedModel: string;
     serverUrl: string;
+    qwenServerUrl: string;
+    isollama: boolean;
     clearChat: () => void;
   } = $props();
 
   let localStorageModels = localStorage.getItem("models");
   let availableModels = $state(
-    localStorageModels ? JSON.parse(localStorageModels) : ["codegemma"]
+    localStorageModels ? JSON.parse(localStorageModels) : ["codegemma"],
   );
-
+  let Models = availableModels + ["qwen-plus"];
+  // 从服务器获取模型列表并更新到本地存储到模型列表中【在这里改变qwen本地存储setting】
   async function fetchMoedls() {
     const apiListModels = serverUrl + "/api/tags";
     const resp = await (await fetch(apiListModels)).json();
     availableModels = resp.models.map((m: any) => m.model);
     localStorage.setItem("models", JSON.stringify(availableModels));
   }
+
+  let qwenPlus = $state("qwen-plus");
+  let selectedOption = $state("");
+  $effect(() => {
+    if (availableModels.includes(selectedOption)) {
+      selectedModel = selectedOption;
+      isollama = true;
+    } else if (selectedOption === qwenPlus) {
+      isollama = false;
+    }
+  });
 </script>
 
 {#if showMenu}
@@ -50,6 +65,7 @@
             }}>刷新</button
           >
         </div>
+        <!------------------------ollama---------------------------------->
         <div>
           {#each availableModels as model (model)}
             <div class="flex items-center">
@@ -58,7 +74,8 @@
                 id={model}
                 name="model"
                 value={model}
-                bind:group={selectedModel}
+                bind:group={selectedOption}
+                onchange={() => (selectedOption = selectedModel)}
               />
               <label
                 for={model}
@@ -68,19 +85,47 @@
             </div>
           {/each}
         </div>
-
-        <p class="text-lg font-bold mt-8 mb-2">服务地址</p>
+        <p class="text-lg font-bold mt-5 mb-4 mb-2">服务地址</p>
         <div
           onclick={(e) => e.stopPropagation()}
           class="rounded bg-gray-200 p-2"
         >
           <InplaceEdit bind:value={serverUrl} />
         </div>
+        <!-----------------qwen------------------------>
+        <div class="mt-8">
+          <p class="text-lg font-bold mb-2">通义千问</p>
+          <div class="flex items-center mt-3">
+            <input
+              type="radio"
+              id={qwenPlus}
+              name="model"
+              value="qwen-plus"
+              bind:group={selectedOption}
+              onchange={() => (selectedOption = qwenPlus)}
+            />
+            <label
+              for={qwenPlus}
+              class="ml-1 w-full py-1 px-2 hover:bg-gray-300 rounded"
+              >qwen-plus</label
+            >
+          </div>
+          <p class="text-lg font-bold mt-5 mb-4">服务地址</p>
+          <div
+            onclick={(e) => e.stopPropagation()}
+            class="rounded bg-gray-200 p-2"
+            style="word-break:break-all; overflow-wrap: break-word;"
+          >
+            <InplaceEdit bind:value={qwenServerUrl} />
+          </div>
+        </div>
 
         <a href="/Help">
-          <div class="mt-10 text-lg font-bond text-blue-400 hover:text-blue-500"
-          >help page
-        </div>
+          <div
+            class="mt-10 text-lg font-bond text-blue-400 hover:text-blue-500"
+          >
+            help page
+          </div>
         </a>
 
         <button
