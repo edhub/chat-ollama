@@ -23,7 +23,7 @@
   let textarea: HTMLTextAreaElement;
   let qwenServerUrl =
     "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation";
-
+  let qwenmodel = $state("qwen-plus");
   function resizeTextarea() {
     textarea.style.height = "auto";
     let maxHeight = window.innerHeight * 0.8; // 80% of the window height
@@ -110,7 +110,7 @@
         ],
       };
       //console.log(Msg);
-      const deltaReader = queryQwen(Msg, "qwen-plus", qwenServerUrl);
+      const deltaReader = queryQwen(Msg, qwenmodel, qwenServerUrl);
       for await (const delta of deltaReader) {
         respMessage += delta;
       }
@@ -119,7 +119,7 @@
       chatLog.push({
         id: genId(),
         name: "Qwen",
-        model: "qwen-plus",
+        model: qwenmodel,
         message: respMessage,
       });
       chatLog = chatLog;
@@ -173,11 +173,14 @@
   //选择之后提示选择模型
   $effect(() => {
     if (AllModel !== "") {
-      let model = AllModel;
-      untrack(() => toast.show("已选模型: " + model));
-      if (isollama) {
-        localStorage.setItem("selectedModel", model);
-      }
+      (async () => {
+        let model = AllModel;
+        await tick();
+        untrack(() => toast.show("已选模型: " + model));
+        if (isollama) {
+          localStorage.setItem("selectedModel", model);
+        }
+      })();
     }
   });
 
@@ -193,11 +196,22 @@
     localStorage.setItem("serverUrl", serverUrl);
   });
 
+  // api_key定义
+  let api_key = $state(
+    localStorage.getItem("api_key") ?? "sk-b6fb4372167e4e849094180c9a227b3c",
+  );
+  $effect(() => {
+    if (api_key === "") {
+      api_key = "sk-b6fb4372167e4e849094180c9a227b3c";
+    }
+    localStorage.setItem("api_key", api_key);
+  });
+
   let modelname = $state("");
   let AllModel = $state("");
   $effect(() => {
     modelname = isollama ? "Ollama" : "Qwen";
-    AllModel = isollama ? selectedModel : "qwen-plus";
+    AllModel = isollama ? selectedModel : qwenmodel;
   });
 
   let toast: { show: (msg: string) => void } = getContext("toast");
@@ -280,6 +294,8 @@
   bind:serverUrl
   bind:qwenServerUrl
   bind:isollama
+  bind:qwenmodel
+  bind:api_key
   clearChat={() => {
     chatLog = [];
     localStorage.removeItem("chatLog");
