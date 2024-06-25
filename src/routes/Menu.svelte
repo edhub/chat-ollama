@@ -4,20 +4,16 @@
 
   let {
     showMenu = $bindable(false),
-    selectedModel = $bindable(),
+    selectedOption = $bindable(),
     serverUrl = $bindable(),
     qwenServerUrl = $bindable(),
-    isollama = $bindable(),
-    qwenmodel = $bindable(),
     api_key = $bindable(),
     clearChat,
   }: {
     showMenu: boolean;
-    selectedModel: string;
+    selectedOption: string;
     serverUrl: string;
     qwenServerUrl: string;
-    isollama: boolean;
-    qwenmodel: string;
     api_key: string;
     clearChat: () => void;
   } = $props();
@@ -33,15 +29,6 @@
     localStorage.setItem("models", JSON.stringify(availableModels));
   }
   let Qwen = ["qwen-plus", "qwen-max", "qwen-turbo"];
-  let selectedOption = $state("");
-  $effect(() => {
-    if (availableModels.includes(selectedOption)) {
-      selectedModel = selectedOption;
-      isollama = true;
-    } else if (Qwen.includes(selectedOption)) {
-      isollama = false;
-    }
-  });
 </script>
 
 {#if showMenu}
@@ -76,7 +63,6 @@
                 name="model"
                 value={model}
                 bind:group={selectedOption}
-                onchange={() => (selectedModel = selectedOption)}
               />
               <label
                 for={model}
@@ -103,7 +89,6 @@
                 name="model"
                 value={qwen}
                 bind:group={selectedOption}
-                onchange={() => (qwenmodel = selectedOption)}
               />
               <label
                 for={qwen}
