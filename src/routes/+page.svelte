@@ -13,7 +13,6 @@
     message: string;
   }
   interface Chatlog {
-    iscollect?: boolean;
     input: Message;
     output: Message;
   }
@@ -22,6 +21,30 @@
   );
   let chatLog = $state<Chatlog[]>([]);
   let localChatLog = localStorage.getItem("chatLog");
+  if (
+    localChatLog &&
+    !localChatLog.includes("input") &&
+    !localChatLog.includes("output")
+  ) {
+    let oldChatLog = JSON.parse(localChatLog);
+    for (let i = 0; i < oldChatLog.length; i += 2) {
+      let localChatLog0 = {
+        input: {
+          id: oldChatLog[i].id,
+          name: oldChatLog[i].name,
+          model: oldChatLog[i].model,
+          message: oldChatLog[i].message,
+        },
+        output: {
+          id: oldChatLog[i + 1].id,
+          name: oldChatLog[i + 1].name,
+          model: oldChatLog[i + 1].model,
+          message: oldChatLog[i + 1].message,
+        },
+      };
+      localChatLog = JSON.stringify(localChatLog0);
+    }
+  }
   chatLog = localChatLog ? JSON.parse(localChatLog) : [];
   let showMenu = $state(false);
   let message = $state("");
@@ -56,7 +79,7 @@
       server = serverUrl;
     }
   });
-  interface Msg {
+  interface inputMsg {
     messages: [
       {
         role: "user";
@@ -65,11 +88,11 @@
     ];
   }
 
-  async function* query(Msg: Msg, model: string) {
+  async function* query(inputMsg: inputMsg, model: string) {
     if (selectedOption.includes("qwen")) {
-      yield* queryQwen(Msg, model, server);
+      yield* queryQwen(inputMsg, model, server);
     } else {
-      yield* queryOllama(Msg.messages[0].content, model, server);
+      yield* queryOllama(inputMsg.messages[0].content, model, server);
     }
   }
   async function sendmsg() {
@@ -96,7 +119,7 @@
       };
       message = "";
       isRespOngoing = true;
-      let Msg: Msg = {
+      let inputMsg: inputMsg = {
         messages: [
           {
             role: "user",
@@ -104,24 +127,23 @@
           },
         ],
       };
-      let deltaReader = query(Msg, selectedOption);
+      let deltaReader = query(inputMsg, selectedOption);
       for await (const delta of deltaReader) {
         respMessage += delta;
       }
-      //console.log(respMessage);
       respMessage = respMessage.length > 0 ? respMessage : "好像出错啦";
+      scrollToBottom();
       let output = {
         id: id,
         name: selectedOption.includes("qwen") ? "Qwen" : "Ollama",
         model: selectedOption,
-        message: JSON.stringify(respMessage),
+        message: respMessage,
       };
       chatLog.push({
         input: input,
         output: output,
       });
       chatLog = chatLog;
-      // console.log(JSON.stringify(chatLog));
       isRespOngoing = false;
       localStorage.setItem("chatLog", JSON.stringify(chatLog));
     }
@@ -158,7 +180,6 @@
 
   $effect(() => {
     if (selectedOption !== "") {
-      //   await tick();
       let model = selectedOption;
       untrack(() => toast.show("已选模型: " + model));
     }
@@ -176,19 +197,17 @@
   });
 
   // api_key定义
-  let api_key = $state(
-    localStorage.getItem("api_key") ?? "sk-b6fb4372167e4e849094180c9a227b3c",
-  );
+  let api_key = $state(localStorage.getItem("api_key") ?? " ");
   $effect(() => {
     if (api_key === "") {
-      api_key = "sk-b6fb4372167e4e849094180c9a227b3c";
+      console.log("api_key为空");
+      toast.show("api_key");
     }
     localStorage.setItem("api_key", api_key);
   });
-
   let modelname = $state("");
   $effect(() => {
-    selectedOption.includes("qwen") ? "Qwen" : "Ollama";
+    modelname = selectedOption.includes("qwen") ? "Qwen" : "Ollama";
   });
   let toast: { show: (msg: string) => void } = getContext("toast");
 </script>
@@ -196,37 +215,34 @@
 <div class="z-0 w-full h-full">
   <div bind:this={chatContainer} class=" flex flex-col overflow-y-auto pb-20">
     {#each chatLog as { input, output }}
-      {#each [input] as { name, model, message }}
-        <Message
-          {name}
-          {model}
-          {message}
-          onMessageCopied={() => {
-            toast.show("消息已复制到剪贴板");
-          }}
-          onResendMessage={resendMessage}
-          collectedsession={() => {
-            collectchatlog.push({
-              input: input,
-              output: output,
-            });
-            localStorage.setItem(
-              "collectchatlog",
-              JSON.stringify(collectchatlog),
-            );
-          }}
-        />
-      {/each}
-      {#each [output] as { name, model, message }}
-        <Message
-          {name}
-          {model}
-          {message}
-          onMessageCopied={() => {
-            toast.show("消息已复制到剪贴板");
-          }}
-        />
-      {/each}
+      <Message
+        name={input.name}
+        model={input.model}
+        message={input.message}
+        onMessageCopied={() => {
+          toast.show("消息已复制到剪贴板");
+        }}
+        onResendMessage={resendMessage}
+        collectedsession={() => {
+          collectchatlog.push({
+            input,
+            output,
+          });
+          localStorage.setItem(
+            "collectchatlog",
+            JSON.stringify(collectchatlog),
+          );
+          toast.show("已收藏");
+        }}
+      />
+      <Message
+        name={output.name}
+        model={output.model}
+        message={output.message}
+        onMessageCopied={() => {
+          toast.show("消息已复制到剪贴板");
+        }}
+      />
     {/each}
     {#if isRespOngoing}
       <Message
@@ -242,6 +258,7 @@
     class="chat-input fixed bottom-0 w-full bg-white flex items-end"
     onsubmit={(e) => {
       e.preventDefault();
+      sendmsg();
       sendmsg();
     }}
   >
@@ -263,6 +280,7 @@
           ) {
             e.preventDefault();
             sendmsg();
+            sendmsg();
             await tick();
             resizeTextarea();
           }
@@ -277,6 +295,14 @@
       </button>
     </div>
   </form>
+
+  <a href="/collection">
+    <div
+      class="fixed top-10 right-0 p-2 m-2 rounded text-white bg-blue-400 hover:bg-blue-500"
+    >
+      <span class="iconify simple-line-icons--folder-alt"> </span>
+    </div>
+  </a>
 
   <a href="/collection">
     <div
