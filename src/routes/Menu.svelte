@@ -4,17 +4,17 @@
 
   let {
     showMenu = $bindable(false),
-    selectedModel = $bindable(),
+    selectedOption = $bindable(),
     serverUrl = $bindable(),
     qwenServerUrl = $bindable(),
-    isollama = $bindable(),
+    api_key = $bindable(),
     clearChat,
   }: {
     showMenu: boolean;
-    selectedModel: string;
+    selectedOption: string;
     serverUrl: string;
     qwenServerUrl: string;
-    isollama: boolean;
+    api_key: string;
     clearChat: () => void;
   } = $props();
 
@@ -28,16 +28,7 @@
     availableModels = resp.models.map((m: any) => m.model);
     localStorage.setItem("models", JSON.stringify(availableModels));
   }
-  let qwenPlus = $state("qwen-plus");
-  let selectedOption = $state("");
-  $effect(() => {
-    if (availableModels.includes(selectedOption)) {
-      selectedModel = selectedOption;
-      isollama = true;
-    } else if (selectedOption === qwenPlus) {
-      isollama = false;
-    }
-  });
+  let Qwen = ["qwen-plus", "qwen-max", "qwen-turbo"];
 </script>
 
 {#if showMenu}
@@ -53,7 +44,7 @@
       <div class="w-64 p-4">
         <div class="mb-1 space-x-2">
           <p class="text-xl font-bold flex items-center justify-center">
-            ollama
+            Ollama
           </p>
           <button
             class="text-blue-400 hover:text-blue-500"
@@ -72,7 +63,6 @@
                 name="model"
                 value={model}
                 bind:group={selectedOption}
-                onchange={() => (selectedOption = selectedModel)}
               />
               <label
                 for={model}
@@ -91,21 +81,22 @@
         <p class="text-xs font-bold mt-2 mb-4 bg-white">*点击修改服务地址</p>
         <div class="mt-8 mb-8">
           <p class="text-xl font-bold mt-4 mb-2 text-center">Qwen</p>
-          <div class="flex items-center mt-3">
-            <input
-              type="radio"
-              id={qwenPlus}
-              name="model"
-              value="qwen-plus"
-              bind:group={selectedOption}
-              onchange={() => (selectedOption = qwenPlus)}
-            />
-            <label
-              for={qwenPlus}
-              class="ml-1 w-full py-1 px-2 hover:bg-gray-300 rounded"
-              >qwen-plus</label
-            >
-          </div>
+          {#each Qwen as qwen (qwen)}
+            <div class="flex items-center">
+              <input
+                type="radio"
+                id={qwen}
+                name="model"
+                value={qwen}
+                bind:group={selectedOption}
+              />
+              <label
+                for={qwen}
+                class="ml-1 w-full py-1 px-2 hover:bg-gray-300 rounded"
+                >{qwen}</label
+              >
+            </div>
+          {/each}
           <div
             onclick={(e) => e.stopPropagation()}
             class="rounded bg-gray-100 p-2 mt-3"
@@ -114,6 +105,14 @@
             <InplaceEdit bind:value={qwenServerUrl} />
           </div>
           <p class="text-xs font-bold mt-2 mb-10">*点击修改服务地址</p>
+          <div
+            onclick={(e) => e.stopPropagation()}
+            class="rounded bg-gray-100 p-2 mt-3"
+            style="word-break:break-all;overflow-wrap: break-word;"
+          >
+            <p class="text-M font-bold mt-2 mb-2">API_KEY</p>
+            <InplaceEdit bind:value={api_key} />
+          </div>
         </div>
         <div class="flex justify-between">
           <a href="/Help">

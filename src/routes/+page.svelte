@@ -12,18 +12,24 @@
     model: string;
     message: string;
   }
-
-  let chatLog = $state<Message[]>([]);
+  interface Chatlog {
+    iscollect?: boolean;
+    input: Message;
+    output: Message;
+  }
+  let selectedOption = $state(
+    localStorage.getItem("selectedOption") ?? "llama3:latest",
+  );
+  let chatLog = $state<Chatlog[]>([]);
   let localChatLog = localStorage.getItem("chatLog");
   chatLog = localChatLog ? JSON.parse(localChatLog) : [];
   let showMenu = $state(false);
   let message = $state("");
-  let isollama = $state(false);
   let chatContainer: HTMLDivElement;
   let textarea: HTMLTextAreaElement;
-  let qwenServerUrl =
-    "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation";
-
+  let qwenServerUrl = $state(
+    "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
+  );
   function resizeTextarea() {
     textarea.style.height = "auto";
     let maxHeight = window.innerHeight * 0.8; // 80% of the window height
@@ -35,64 +41,44 @@
 
   function resendMessage(msg: string) {
     message = msg;
-    sendMessage();
+    sendmsg();
   }
 
-  // ollama-sendmessage
-  async function sendMessage() {
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const genId = () => Math.random().toString(36).substr(2, 9);
+  let collectchatlog = $state<Chatlog[]>([]);
+  let localcollectchatlog = localStorage.getItem("collectchatlog");
+  collectchatlog = localcollectchatlog ? JSON.parse(localcollectchatlog) : [];
 
-    if (message.trim() !== "") {
-      scrollToBottom();
-      let tmpMsg = message;
-      message = "";
-      chatLog.push({ id: genId(), name: "User", model: "", message: tmpMsg });
-      chatLog = chatLog;
-      isRespOngoing = true; // 模型开始运转
-      const url = tmpMsg.match(urlRegex);
-      if (url) {
-        for (let i = 0; i < url.length; i++) {
-          const content =
-            (await grabContentFromUrl(url[i])) || "(无法打开这个网页)";
-          tmpMsg = tmpMsg.replace(url[i], `${url[i]} ${content}`);
-        }
-      }
+  let server = $state("");
+  $effect(() => {
+    if (selectedOption.includes("qwen")) {
+      server = qwenServerUrl;
+    } else {
+      server = serverUrl;
+    }
+  });
+  interface Msg {
+    messages: [
+      {
+        role: "user";
+        content: string;
+      },
+    ];
+  }
 
-      const deltaReader = queryOllama(tmpMsg, selectedModel, serverUrl);
-      for await (const delta of deltaReader) {
-        respMessage += delta;
-      }
-      respMessage = respMessage.length > 0 ? respMessage : "好像出错啦";
-      chatLog.push({
-        id: genId(),
-        name: "Ollama",
-        model: selectedModel,
-        message: respMessage,
-      });
-      chatLog = chatLog;
-
-      isRespOngoing = false;
-      respMessage = "";
-      localStorage.setItem("chatLog", JSON.stringify(chatLog));
+  async function* query(Msg: Msg, model: string) {
+    if (selectedOption.includes("qwen")) {
+      yield* queryQwen(Msg, model, server);
+    } else {
+      yield* queryOllama(Msg.messages[0].content, model, server);
     }
   }
-  // qwen-sendmessage
-  async function sendMessageqwen() {
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
+  async function sendmsg() {
     const genId = () => Math.random().toString(36).substr(2, 9);
-
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
     if (message.trim() !== "") {
       scrollToBottom();
-
       let tmpMsg = message;
-      message = "";
-
-      chatLog.push({ id: genId(), name: "User", model: "", message: tmpMsg });
-      chatLog = chatLog;
-      isRespOngoing = true;
-
-      //url提取无法作用
+      //提取url
       const url = tmpMsg.match(urlRegex);
       if (url) {
         for (let i = 0; i < url.length; i++) {
@@ -101,7 +87,16 @@
           tmpMsg = tmpMsg.replace(url[i], `${url[i]} ${content}`);
         }
       }
-      let Msg = {
+      const id = genId();
+      let input = {
+        id: id,
+        name: "User",
+        model: selectedOption,
+        message: tmpMsg,
+      };
+      message = "";
+      isRespOngoing = true;
+      let Msg: Msg = {
         messages: [
           {
             role: "user",
@@ -109,33 +104,28 @@
           },
         ],
       };
-      //console.log(Msg);
-      const deltaReader = queryQwen(Msg, "qwen-plus", qwenServerUrl);
+      let deltaReader = query(Msg, selectedOption);
       for await (const delta of deltaReader) {
         respMessage += delta;
       }
       //console.log(respMessage);
       respMessage = respMessage.length > 0 ? respMessage : "好像出错啦";
+      let output = {
+        id: id,
+        name: selectedOption.includes("qwen") ? "Qwen" : "Ollama",
+        model: selectedOption,
+        message: JSON.stringify(respMessage),
+      };
       chatLog.push({
-        id: genId(),
-        name: "Qwen",
-        model: "qwen-plus",
-        message: respMessage,
+        input: input,
+        output: output,
       });
       chatLog = chatLog;
+      // console.log(JSON.stringify(chatLog));
       isRespOngoing = false;
-      respMessage = "";
       localStorage.setItem("chatLog", JSON.stringify(chatLog));
     }
   }
-  async function sendMSG() {
-    if (isollama === true) {
-      sendMessage();
-    } else {
-      sendMessageqwen();
-    }
-  }
-
   $effect(() => {
     setTimeout(() => scrollToBottom(), 500);
     const updateScrollTime = () => (scrollTime = Date.now());
@@ -166,25 +156,17 @@
     chatContainer.scrollIntoView({ behavior: "smooth", block: "end" });
   }
 
-  let selectedModel = $state(
-    localStorage.getItem("selectedModel") ?? "codegemma",
-  );
-
-  //选择之后提示选择模型
   $effect(() => {
-    if (AllModel !== "") {
-      let model = AllModel;
+    if (selectedOption !== "") {
+      //   await tick();
+      let model = selectedOption;
       untrack(() => toast.show("已选模型: " + model));
-      if (isollama) {
-        localStorage.setItem("selectedModel", model);
-      }
     }
   });
 
   let serverUrl = $state(
     localStorage.getItem("serverUrl") ?? "http://10.1.22.88:11434",
   );
-
   $effect(() => {
     if (serverUrl === "") {
       serverUrl = "http://localhost:11434";
@@ -193,34 +175,64 @@
     localStorage.setItem("serverUrl", serverUrl);
   });
 
-  let modelname = $state("");
-  let AllModel = $state("");
+  // api_key定义
+  let api_key = $state(
+    localStorage.getItem("api_key") ?? "sk-b6fb4372167e4e849094180c9a227b3c",
+  );
   $effect(() => {
-    modelname = isollama ? "Ollama" : "Qwen";
-    AllModel = isollama ? selectedModel : "qwen-plus";
+    if (api_key === "") {
+      api_key = "sk-b6fb4372167e4e849094180c9a227b3c";
+    }
+    localStorage.setItem("api_key", api_key);
   });
 
+  let modelname = $state("");
+  $effect(() => {
+    selectedOption.includes("qwen") ? "Qwen" : "Ollama";
+  });
   let toast: { show: (msg: string) => void } = getContext("toast");
 </script>
 
 <div class="z-0 w-full h-full">
   <div bind:this={chatContainer} class=" flex flex-col overflow-y-auto pb-20">
-    {#each chatLog as { id, name, model, message } (id)}
-      <Message
-        {name}
-        {model}
-        {message}
-        onMessageCopied={() => {
-          toast.show("消息已复制到剪贴板");
-        }}
-        onResendMessage={resendMessage}
-      />
+    {#each chatLog as { input, output }}
+      {#each [input] as { name, model, message }}
+        <Message
+          {name}
+          {model}
+          {message}
+          onMessageCopied={() => {
+            toast.show("消息已复制到剪贴板");
+          }}
+          onResendMessage={resendMessage}
+          collectedsession={() => {
+            collectchatlog.push({
+              input: input,
+              output: output,
+            });
+            localStorage.setItem(
+              "collectchatlog",
+              JSON.stringify(collectchatlog),
+            );
+          }}
+        />
+      {/each}
+      {#each [output] as { name, model, message }}
+        <Message
+          {name}
+          {model}
+          {message}
+          onMessageCopied={() => {
+            toast.show("消息已复制到剪贴板");
+          }}
+        />
+      {/each}
     {/each}
     {#if isRespOngoing}
       <Message
         name={modelname}
-        model={AllModel}
-        message={respMessage}
+        model={selectedOption}
+        {message}
         {isRespOngoing}
       />
     {/if}
@@ -230,7 +242,7 @@
     class="chat-input fixed bottom-0 w-full bg-white flex items-end"
     onsubmit={(e) => {
       e.preventDefault();
-      sendMSG();
+      sendmsg();
     }}
   >
     <div class="fixed bottom-0 w-full bg-white flex items-end">
@@ -250,7 +262,7 @@
             !e.shiftKey
           ) {
             e.preventDefault();
-            sendMSG();
+            sendmsg();
             await tick();
             resizeTextarea();
           }
@@ -266,6 +278,14 @@
     </div>
   </form>
 
+  <a href="/collection">
+    <div
+      class="fixed top-10 right-0 p-2 m-2 rounded text-white bg-blue-400 hover:bg-blue-500"
+    >
+      <span class="iconify simple-line-icons--folder-alt"> </span>
+    </div>
+  </a>
+
   <button
     class="fixed top-0 right-0 m-2 p-2 rounded bg-blue-400 hover:bg-blue-500 text-white"
     onclick={() => (showMenu = true)}
@@ -276,10 +296,10 @@
 
 <Menu
   bind:showMenu
-  bind:selectedModel
+  bind:selectedOption
   bind:serverUrl
   bind:qwenServerUrl
-  bind:isollama
+  bind:api_key
   clearChat={() => {
     chatLog = [];
     localStorage.removeItem("chatLog");

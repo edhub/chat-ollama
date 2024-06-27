@@ -10,6 +10,7 @@
     model = "",
     message = "",
     isRespOngoing = false,
+    collectedsession = () => {},
     onMessageCopied = () => {},
     onResendMessage = () => {},
   }: {
@@ -17,10 +18,10 @@
     model: string;
     message: string;
     isRespOngoing?: boolean;
+    collectedsession?: () => void;
     onMessageCopied?: () => void;
     onResendMessage?: (message: string) => void;
   } = $props();
-
   function highlight(code: string, lang: string) {
     if (hljs.getLanguage(lang)) {
       return hljs.highlight(code, { language: lang }).value;
@@ -91,6 +92,12 @@
             onclick={() => {
               onResendMessage(message);
             }}>再次发送</button
+          >
+          <button
+            class="ml-2 p-0 text-xs text-blue-400"
+            onclick={() => {
+              collectedsession();
+            }}>收藏</button
           >
         {/if}
       </span>

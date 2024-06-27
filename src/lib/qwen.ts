@@ -1,4 +1,3 @@
-import { json } from "@sveltejs/kit";
 import { fetch } from "@tauri-apps/plugin-http";
 
 export async function* queryQwen(
@@ -15,14 +14,15 @@ export async function* queryQwen(
   };
 
   console.log("body is", data);
-
+  let api_key = localStorage.getItem("api_key");
+  // "sk-b6fb4372167e4e849094180c9a227b3c";
   const resp = await fetch(
     server,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": "Bearer sk-b6fb4372167e4e849094180c9a227b3c",
+        "Authorization": `Bearer ${api_key}`,
         //  "X-DashScope-SSE": "enable",
       },
       body: JSON.stringify(data),
@@ -30,7 +30,6 @@ export async function* queryQwen(
   );
 
   const respmsg = await resp.text();
-
   if (!resp.ok) {
     console.log("error is", respmsg);
     console.log("server is", server);
@@ -42,9 +41,11 @@ export async function* queryQwen(
     yield JSON.parse(respmsg).output.text;
   } catch (e) {
     yield "解析出错啦！";
+    console.log("respmsg");
   }
 }
 
+// 测试样本
 // const input:object ={
 //   "messages":[
 //           {
