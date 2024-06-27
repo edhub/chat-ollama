@@ -101,7 +101,6 @@
     if (message.trim() !== "") {
       scrollToBottom();
       let tmpMsg = message;
-      //提取url
       const url = tmpMsg.match(urlRegex);
       if (url) {
         for (let i = 0; i < url.length; i++) {
@@ -196,14 +195,14 @@
     localStorage.setItem("serverUrl", serverUrl);
   });
 
-  // api_key定义
-  let api_key = $state(localStorage.getItem("api_key") ?? " ");
+  // api_key
+  let api_key = $state(localStorage.getItem("api_key") ?? "");
   $effect(() => {
-    if (api_key === "") {
-      console.log("api_key为空");
-      toast.show("api_key");
-    }
     localStorage.setItem("api_key", api_key);
+    if (api_key === "") {
+      console.log("api_key empty, please check sr");
+      toast.show("api_key empty, please check sr");
+    }
   });
   let modelname = $state("");
   $effect(() => {
@@ -224,10 +223,7 @@
         }}
         onResendMessage={resendMessage}
         collectedsession={() => {
-          collectchatlog.push({
-            input,
-            output,
-          });
+          collectchatlog.push({ input, output });
           localStorage.setItem(
             "collectchatlog",
             JSON.stringify(collectchatlog),

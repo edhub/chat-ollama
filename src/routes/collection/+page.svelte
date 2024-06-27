@@ -37,7 +37,6 @@
         >
             收藏
         </p>
-
         <button
             onclick={goBack}
             class="rounded p-2 text-lg font-bold text-white hover:bg-blue-200"
@@ -61,44 +60,40 @@
     </div>
     <div class="flex flex-col gap-2 p-2 rounded border-b border-grey-200">
         {#each collectcl as { input, output }, index}
-            {#each [input] as { message }}
-                <div>
-                    <p
-                        class="flex mr-2 justify-between items-center font-bold text-blue-500"
-                    >
-                        <span class="flex-grow">
-                            Question:
-                            <span class="font-normal ml-2 mr-4 text-black">
-                                {message}
-                            </span>
+            <div>
+                <p
+                    class="flex mr-2 justify-between items-center font-bold text-blue-500"
+                >
+                    <span class="flex-grow">
+                        Question:
+                        <span class="font-normal ml-2 mr-4 text-black">
+                            {input.message}
                         </span>
-                        <button
-                            onclick={() => {
-                                collectcl.splice(index, 1);
-                            }}
-                        >
-                            <span
-                                class="iconify simple-line-icons--close font-bond text-red-500 hover:bg-red-900 rounded-full p-1"
-                                style="font-size:30px;"
-                            >
-                            </span>
-                        </button>
-                    </p>
-                </div>
-            {/each}
-            {#each [output] as { name, model, message }}
-                <div>
-                    <p class="flex font-bold mb-2 text-blue-500">
-                        {name}
-                        <span class="flex ml-2 font-normal text-gray-500">
-                            ({model})
-                        </span>
-                    </p>
-                    <span class="font-normal ml-2 mr-4 text-black">
-                        {@html message.replace(/\n/g, "<br>")}
                     </span>
-                </div>
-            {/each}
+                    <button
+                        onclick={() => {
+                            collectcl.splice(index, 1);
+                        }}
+                    >
+                        <span
+                            class="iconify simple-line-icons--close font-bond text-red-500 hover:bg-red-900 rounded-full p-1"
+                            style="font-size:30px;"
+                        >
+                        </span>
+                    </button>
+                </p>
+            </div>
+            <div>
+                <p class="flex font-bold mb-2 text-blue-500">
+                    {output.name}
+                    <span class="flex ml-2 font-normal text-gray-500">
+                        ({output.model})
+                    </span>
+                </p>
+                <span class="font-normal ml-2 mr-4 text-black">
+                    {@html output.message.replace(/\n/g, "<br>")}
+                </span>
+            </div>
             {#if index !== collectcl.length - 1}
                 <div class="border-b border-gray-200"></div>
             {/if}
